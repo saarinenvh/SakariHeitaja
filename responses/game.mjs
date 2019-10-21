@@ -151,7 +151,7 @@ export const throws = [
   "hyppyputilla"
 ];
 
-export const players = ["Jenni Grönvall", "Ville Saarinen", "Topi Stenman", "Valtteri Varmola", "Jon Grönvall",
+export let players = ["Jenni Grönvall", "Ville Saarinen", "Topi Stenman", "Valtteri Varmola", "Jon Grönvall",
 "Nestori Vainio", "Klaus Väisälä", "Wilhelm Takala", "Antti Räisänen", "Aki Laaksonen", "Nitta Stenman",
 "Lauri Saarinen", "Pekka Vajanto", "Ilmari Korpela", "Hanna Väisälä", "Jori Nurminen", "Aki Tiittanen", "jeee", "asdfasdf",
 "Topi Stenman, Aki Laaksonen"];
