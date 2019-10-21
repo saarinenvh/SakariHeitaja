@@ -1,0 +1,23 @@
+{
+  "name": "commentatorbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo && exit 1",
+    "start": "node app.js",
+    "lint": "eslint"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.0",
+    "node-telegram-bot-api": "^0.30.0",
+    "rxjs": "^6.5.2"
+  },
+  "devDependencies": {
+    "eslint": "^6.1.0"
+  }
+}
