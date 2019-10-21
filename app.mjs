@@ -45,11 +45,7 @@ bot.onText(/\/tasoitus (.+)/, (msg, match) => {
       break;
   }
 
-  if (text) {
-    bot.sendMessage(chatId, text, {parse_mode: 'HTML'})
-  } else {
-    bot.sendMessage(chatId, "Häh?", {parse_mode: 'HTML'})
-  }
+    bot.sendMessage(chatId, text ? text : "häh?", {parse_mode: 'HTML'})
 });
 
 // Listens the channel, small probability to answer something random
