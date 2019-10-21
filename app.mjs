@@ -123,9 +123,8 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
     "Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson"
   );
 
-  const c = new Game(competitionId, chatId)
-  competitionsToFollow[chatId] = [c]
-  competitionsToFollow[chatId][0].startFollowing();
+  competitionsToFollow[chatId] = new Game(competitionId, chatId)
+  competitionsToFollow[chatId].startFollowing()
 });
 
 
@@ -133,7 +132,7 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
 bot.onText(/\/lopeta/, msg => {
   const chatId = msg.chat.id;
   if (competitionsToFollow[chatId]) {
-    competitionsToFollow[chatId][0].stopFollowing()
+    competitionsToFollow[chatId].stopFollowing()
     bot.sendMessage(chatId, "No olihan se kivaa taas, jatketaan ens kerralla.");
   } else {
     bot.sendMessage(chatId, "Ehämmä seuraa täs mitää saatana.");

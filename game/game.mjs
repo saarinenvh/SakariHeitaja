@@ -21,7 +21,7 @@ class Game {
   stopFollowing() {
     this.following = false;
   }
-  
+
   async startFollowing() {
     // Condition for following the contest
     if (this.following) {
@@ -233,7 +233,7 @@ class Game {
    createPhrase(player) {
     if (this.getHole(player.Name) !== -1) {
     const obj = this.getPhraseForScore(player, this.getHole(player.Name));
-    const randomVerb = verbs[this.getRandom(verbs.length)];
+    const randomVerb = verbs[getRandom(verbs.length)];
     return {hole: this.getHole(player.Name), text:`${obj.startText} <b>${
       player.Name
     }</b> ${randomVerb} ${
@@ -254,22 +254,22 @@ class Game {
     if (score == 1)
       obj = {
         score: 1,
-        startText: goodStart[this.getRandom(goodStart.length)],
+        startText: goodStart[getRandom(goodStart.length)],
         scoreText: "ÄSSÄN!"
       };
     else if (player.PlayerResults[hole].Diff > 2)
       obj = {
         score: score,
-        startText: badStart[this.getRandom(badStart.length)],
+        startText: badStart[getRandom(badStart.length)],
         scoreText: `niin ison scoren, että ei mahdu edes näytölle (${score})`
       };
     else if (player.PlayerResults[hole].Diff > 0)
       obj = {
         score: score,
-        startText: badStart[this.getRandom(badStart.length)],
+        startText: badStart[getRandom(badStart.length)],
         scoreText: scores.find(n => n.score == player.PlayerResults[hole].Diff)
           .text[
-          this.getRandom(
+          getRandom(
             scores.find(n => n.score == player.PlayerResults[hole].Diff).text
               .length
           )
@@ -278,18 +278,18 @@ class Game {
     else if (player.PlayerResults[hole].Diff == 0) {
       obj = {
         score: score,
-        startText: neutralStart[this.getRandom(neutralStart.length)],
+        startText: neutralStart[getRandom(neutralStart.length)],
         scoreText: scores.find(n => n.score == 0).text[
-          this.getRandom(scores.find(n => n.score == 0).text.length)
+          getRandom(scores.find(n => n.score == 0).text.length)
         ]
       };
     } else {
       obj = {
         score: score,
-        startText: goodStart[this.getRandom(goodStart.length)],
+        startText: goodStart[getRandom(goodStart.length)],
         scoreText: scores.find(n => n.score == player.PlayerResults[hole].Diff)
           .text[
-          this.getRandom(
+          getRandom(
             scores.find(n => n.score == player.PlayerResults[hole].Diff).text
               .length
           )
@@ -300,7 +300,7 @@ class Game {
   }
 
    getStartText() {
-    const obj = narratives[this.getRandom(narratives.length)];
+    const obj = narratives[getRandom(narratives.length)];
     return `${obj.firstPart}\n`;
   }
 }
