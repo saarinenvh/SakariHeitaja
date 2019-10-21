@@ -1,6 +1,5 @@
 // Node Modules
 import express from 'express'
-import fetch from 'node-fetch'
 import TelegramBot from 'node-telegram-bot-api'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -8,6 +7,10 @@ dotenv.config()
 // Import all the quotes, future these will be in DB
 import {sakariNames, sakariResponses, randomQuote} from './responses/default.mjs'
 import {narratives, scores, goodStart, badStart, neutralStart, verbs, throws, players} from './responses/game.mjs'
+
+// Custom Modules
+import HandicappedScores from './handicap/calc.mjs'
+import {getData, getGiphy} from './async/functions.mjs'
 
 // Defined on .env file
 const giphyId = process.env.GIPHYID
@@ -26,6 +29,40 @@ let games = {};
 let date = new Date().toLocaleDateString();
 
 const bot = new TelegramBot(token, { polling: true });
+
+bot.onText(/\/tasoitus (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  let text = undefined
+  let overallText = undefined
+  switch(match[1]) {
+    case "Kaatis":
+      text = HandicappedScores.getHandicappedResults("kaatis", chatId);
+      break;
+    case "Kisis":
+      text = HandicappedScores.getHandicappedResults("kisis", chatId);
+      break;
+    case "Karkkila":
+      text = HandicappedScores.getHandicappedResults("karkkila", chatId);
+      break;
+    case "overall":
+      text = HandicappedScores.getHandicappedResults("overall", chatId);
+      break;
+    case "hamis":
+      text = HandicappedScores.getHandicappedResults("hamis", chatId);
+      break;
+    case "all":
+      text = HandicappedScores.getHandicappedResults("all", chatId);
+      break;
+    default:
+      break;
+  }
+
+  if (text) {
+    bot.sendMessage(chatId, text, {parse_mode: 'HTML'})
+  } else {
+    bot.sendMessage(chatId, overallText, {parse_mode: 'HTML'})
+  }
+});
 
 bot.onText(/\/lopeta/, msg => {
   const chatId = msg.chat.id;
@@ -418,8 +455,7 @@ function checkScoreAndCreatePhrase(prevDiff, newDiff) {
 
 function createPhrase(player) {
   if (getHole(player.Name) !== -1) {
-    const obj = getPhraseForScore(player, getHole(player.Name));
-
+  const obj = getPhraseForScore(player, getHole(player.Name));
   const randomVerb = verbs[getRandom(verbs.length)];
   return {hole: getHole(player.Name), text:`${obj.startText} <b>${
     player.Name
@@ -491,37 +527,6 @@ function getStartText() {
   return `${obj.firstPart}\n`;
 }
 
-const getData = async url => {
-  try {
-    const response = await fetch(url);
-    return response.json();
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const getGiphy = async url => {
-  try {
-    const response = await fetch(url);
-    return response.text();
-  } catch (error) {
-    console.log(error);
-  }
-}
-
-bot.onText(/\/gifplz (.+)/, (msg, match) => {
-  console.log(match)
-  if (match[1] == "") {
-    const chatId = msg.chat.id;
-    getGiphy("https://api.gfycat.com/v1/gfycats/search?search_text=discgolf").then( n => {
-      const response = JSON.parse(n)
-      const images = response.gfycats.map( n => n.mp4Url)
-      const test = bot.sendVideo(chatId, images[getRandom(images.length)]);
-    })
-  }
-
-});
-
 bot.onText(/\/gifplz (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const url = `https://api.gfycat.com/v1/gfycats/search?search_text=${match[1]}`
@@ -532,305 +537,7 @@ bot.onText(/\/gifplz (.+)/, (msg, match) => {
   })
 });
 
-const harkalinna = {
-  competitionName: "Harkalinna",
-  competitionIds: [],
-  players: []
-}
-
-const kisis = {
-  competitionName: "Kisis",
-  competitionIds: [930448, 930458],
-  players: [
-  {name: "Aki Laaksonen", rating: 900, score: 0, handicappedScore: 0},
-  {name: "Antti Räisänen", rating: 841,score: 0, handicappedScore: 0},
-  {name: "Jon Grönvall", rating: 821, score: 0, handicappedScore: 0},
-  {name: "Klaus Väisälä", rating: 854, score: 0, handicappedScore: 0},
-  {name: "Lauri Saarinen", rating: 871, score: 0, handicappedScore: 0},
-  {name: "Valtteri Varmola", rating: 890, score: 0, handicappedScore: 0},
-  {name: "Ville Saarinen", rating: 907, score: 0, handicappedScore: 0},
-  {name: "Hanna Väisälä", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Topi Stenman", rating: 954, score: 0, handicappedScore: 0},
-  ]
-};
-
-const karkkila = {
-  competitionName: "Karkkila",
-  competitionIds: [1001090, 1001094],
-  players: [
-  {name: "Aki Laaksonen", rating: 872, score: 0, handicappedScore: 0},
-  {name: "Antti Räisänen", rating: 841,score: 0, handicappedScore: 0},
-  {name: "Jenni Grönvall", rating: 797, score: 0, handicappedScore: 0},
-  {name: "Jon Grönvall", rating: 834, score: 0, handicappedScore: 0},
-  {name: "Klaus Väisälä", rating: 866, score: 0, handicappedScore: 0},
-  {name: "Lauri Saarinen", rating: 872, score: 0, handicappedScore: 0},
-  {name: "Nestori Vainio", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Valtteri Varmola", rating: 885, score: 0, handicappedScore: 0},
-  {name: "Ville Saarinen", rating: 921, score: 0, handicappedScore: 0},
-  {name: "Wilhelm Takala", rating: 795, score: 0, handicappedScore: 0},
-  {name: "Nitta Stenman", rating: 705, score: 0, handicappedScore: 0},
-  {name: "Pekka Vajanto", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Ilmari Korpela", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Topi Stenman", rating: 941, score: 0, handicappedScore: 0},
-  {name: "Jori Nurminen", rating: 883, score: 0, handicappedScore: 0},
-  {name: "Hanna Väisälä", rating: 0, score: 0, handicappedScore: 0},
-  ]
-};
-
-const kaatis = {
-  competitionName: "Kaatis",
-  competitionIds: [1047644, 1047645],
-  players: [
-  {name: "Aki Laaksonen", rating: 898, score: 0, handicappedScore: 0},
-  {name: "Antti Räisänen", rating: 824,score: 0, handicappedScore: 0},
-  {name: "Jenni Grönvall", rating: 805, score: 0, handicappedScore: 0},
-  {name: "Jon Grönvall", rating: 836, score: 0, handicappedScore: 0},
-  {name: "Karo Kreander", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Klaus Väisälä", rating: 863, score: 0, handicappedScore: 0},
-  {name: "Lauri Saarinen", rating: 873, score: 0, handicappedScore: 0},
-  {name: "Nestori Vainio", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Valtteri Varmola", rating: 872, score: 0, handicappedScore: 0},
-  {name: "Ville Saarinen", rating: 924, score: 0, handicappedScore: 0},
-  {name: "Wilhelm Takala", rating: 800, score: 0, handicappedScore: 0}
-  ]
-};
-
-const hamis = {
-  competitionName: "Härkälinna",
-  competitionIds: [1094930, 1094932],
-  players: [
-  {name: "Aki Laaksonen", rating: 897, score: 0, handicappedScore: 0},
-  {name: "Antti Räisänen", rating: 824,score: 0, handicappedScore: 0},
-  {name: "Jon Grönvall", rating: 834, score: 0, handicappedScore: 0},
-  {name: "Klaus Väisälä", rating: 868, score: 0, handicappedScore: 0},
-  {name: "Lauri Saarinen", rating: 858, score: 0, handicappedScore: 0},
-  {name: "Valtteri Varmola", rating: 874, score: 0, handicappedScore: 0},
-  {name: "Ville Saarinen", rating: 925, score: 0, handicappedScore: 0},
-  {name: "Topi Stenman", rating: 946, score: 0, handicappedScore: 0},
-  {name: "Jenni Grönvall", rating: 798, score: 0, handicappedScore: 0},
-  {name: "Jori Nurminen", rating: 883, score: 0, handicappedScore: 0},
-  {name: "Hanna Väisälä", rating: 0, score: 0, handicappedScore: 0},
-  {name: "Wilhelm Takala", rating: 797, score: 0, handicappedScore: 0}
-  ]
-};
-
-let counted = false
-const competitions = [karkkila, kaatis, kisis, hamis];
-const points = [100,90,83,75,70,65,60,55,53,50,48,45,43,40,38,35,33,30,28,25,23,20];
-
-async function countScores() {
-  countHandicaps()
-  for (competition of competitions) {
-    if (!counted) {
-    for (competitionId of competition.competitionIds) {
-
-    const changes = await getData(`${baseUrl}${competitionId}`).then(newData => {
-      try {
-        if (newData.Competition != null) {
-            for (player of competition.players) {
-                playerData = newData.Competition.Results.find(n => n.Name == player.name);
-                player["score"] = player["score"] + playerData.Sum
-                player["handicappedScore"] = player["handicappedScore"] + playerData.Sum + player.handicap
-          }
-        }
-      } catch(e) {
-        console.log(e)
-        return "Virhe laskiessa tasoituksia"
-      }
-    })
-    }
-    }
-
-    competition.players = [...competition.players].sort((first, second) => first.handicappedScore - second.handicappedScore)
-    rankPlayers(competition)
-    }
-  counted = true
-};
-
-function getHandicappedResults(args, chatId) {
-  let text = undefined
-  let overallText = undefined
-
-  switch(args) {
-    case "kaatis":
-      text = createCompetitionMessage(competitions.find(n => n.competitionName == "Kaatis"))
-      break;
-    case "karkkila":
-      text = createCompetitionMessage(competitions.find(n => n.competitionName == "Karkkila"))
-      break;
-    case "kisis":
-      text = createCompetitionMessage(competitions.find(n => n.competitionName == "Kisis"))
-      break;
-    case "all":
-      text = "";
-      for ( competition of competitions) {
-        text += createCompetitionMessage(competition) + "\n"
-      }
-      text += createOverallMessage()
-      break;
-    case "overall":
-      overallText = createOverallMessage()
-      break;
-    default:
-      break;
-  }
-
-  if (text) {
-    bot.sendMessage(chatId, text, {parse_mode: 'HTML'})
-  } else {
-    bot.sendMessage(chatId, overallText, {parse_mode: 'HTML'})
-  }
-}
-
-function createCompetitionMessage(competition) {
-  let text = `***** ${competition.competitionName} ***** \n\n`
-  text += `<code>${fillString("Sija, Nimi", 22)} ${fillString("Tulos", 5)} ${fillString("Pisteet", 7)}</code>\n`
-  competition.players.forEach(n => text += `<code>${fillString(n.rank + ". " + n.name, 22)} ${fillString(n.handicappedScore.toString(), 5)} ${fillString(n.points.toString() + "pst", 7)} </code>\n`)
-  return text;
-}
-
-function createOverallMessage() {
-  let overallText = ""
-  let overall = countOverall(competitions)
-  overall = [...overall].sort((first, second) => second.points - first.points)
-  overallText = "**** FGS Sankaritour 2019 - Kokonaistilanne **** \n\n"
-  overallText += `<code>${fillString("Sija, Nimi", 22)} ${fillString("Pisteet", 7)}</code>\n`
-  overall.forEach((n, index) => overallText += `<code>${fillString( (index + 1).toString() + ". " + n.name, 22)} ${fillString(n.points + "pst", 7)}\n</code>`)
-  return overallText
-}
-
-
-function fillString(s, n) {
-  const diff = n - s.length
-  return `${s + createEmptySpace(diff)}`
-}
-
-function createEmptySpace(n) {
-  let text = ""
-  for (let i = 0; i < n; i++) {
-    text += "\t"
-  }
-  return text
-}
-
-function rankPlayers(competition) {
-  // Check same scores
-  for (let i = 0; i < competition.players.length; i++) {
-    if (i - 1 > 0 &&competition.players[i - 1].handicappedScore == competition.players[i].handicappedScore ) {
-      competition.players[i]["rank"] = competition.players[i - 1].rank
-      // countSharedPoints()
-    } else {
-      competition.players[i]["rank"] = i + 1
-    }
-    competition.players[i]["points"] = points[i]
-  }
-  findSameRanksAndSharePoints(competition)
-}
-
-function findSameRanksAndSharePoints(competition) {
-  let rankObj = {}
-
-  // groups players by rank
-  for (let i = 0; i < competition.players.length; i++) {
-    rankObj[i + 1] = competition.players.filter(n => n.rank == i + 1)
-  }
-
-  // finds all groups that are larger than 1 and calculates the shared score
-  for (key of Object.keys(rankObj)) {
-    if (rankObj[key].length > 1) {
-      const totalScore = rankObj[key].reduce((sum, obj) => sum + obj.points, 0)
-      const points = Math.floor(totalScore / rankObj[key].length)
-      for (player of rankObj[key]) {
-        competition.players.find(n => n.name == player.name).points = points
-      }
-    }
-  }
-}
-
-function countHandicaps() {
-  for (competition of competitions) {
-    for (player of competition.players) {
-      player["rating"] = Math.floor(player["rating"] / 10) * 10
-      if (player["rating"] >= 900) {
-        player["handicap"] = 0
-      } else if (player["rating"] < 720) {
-        player["handicap"] = -18
-      } else {
-        player["handicap"] = handicaps.find(n => n.score == player.rating).handicap
-      }
-      }
-  }
-};
-
-function countOverall(competitions) {
-  let text = ""
-  let rankObj = {}
-  for (competition of competitions) {
-    for (player of competition.players) {
-      if (!Object.keys(rankObj).includes(player.name)) {
-        rankObj[player.name] = {name: player.name, points: []}
-      }
-      rankObj[player.name]["points"].push(player.points)
-    }
-  }
-  return Object.entries(filterBestScoresAndSum(rankObj)).map(n => n[1])
-}
-
-function filterBestScoresAndSum(obj) {
-  for (key of Object.keys(obj)) {
-      if (obj[key].points.length > 3) {
-        let min = Math.min(...obj[key].points);
-        obj[key].points = obj[key].points.filter(e => e != min);
-      }
-      obj[key].points = obj[key].points.reduce( (sum, obj) => sum + obj, 0)
-  }
-  return obj
-}
-
-bot.onText(/\/tasoitus (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-
-  switch(match[1]) {
-    case "Kaatis":
-      getHandicappedResults("kaatis", chatId);
-      break;
-    case "Kisis":
-      getHandicappedResults("kisis", chatId);
-      break;
-    case "Karkkila":
-      getHandicappedResults("karkkila", chatId);
-      break;
-    case "overall":
-      getHandicappedResults("overall", chatId);
-      break;
-    case "all":
-      getHandicappedResults("all", chatId);
-      break;
-    default:
-      break;
-  }
-});
-
-const handicaps = [
-  {score: 890, handicap: -1},
-  {score: 880, handicap: -2},
-  {score: 870, handicap: -3},
-  {score: 860, handicap: -4},
-  {score: 850, handicap: -5},
-  {score: 840, handicap: -6},
-  {score: 830, handicap: -7},
-  {score: 820, handicap: -8},
-  {score: 810, handicap: -9},
-  {score: 800, handicap: -10},
-  {score: 790, handicap: -11},
-  {score: 780, handicap: -12},
-  {score: 770, handicap: -13},
-  {score: 760, handicap: -14},
-  {score: 750, handicap: -15},
-  {score: 740, handicap: -16},
-  {score: 730, handicap: -17},
-  {score: 720, handicap: -18}
-]
-
 const app = express();
-app.listen(5000, "127.0.0.1", function() {});
+app.listen(5000, "127.0.0.1", function() {
+  HandicappedScores.countScores()
+});
