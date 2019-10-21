@@ -77,7 +77,7 @@ class Game {
               bot.sendMessage(this.chatId, createTopList().replace(/['"]+/g, ""));
             }, 2000)
           } else {
-            console.log("Pelaamattomia väyliä jäljellä!")
+            console.log(`${this.id} - Pelaamattomia väyliä jäljellä`)
           }
         } catch(e) {
           console.log(e)

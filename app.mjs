@@ -144,11 +144,9 @@ bot.onText(/\/lopeta/, msg => {
 bot.onText(/\/top5/, msg => {
   const chatId = msg.chat.id;
   if (competitionsToFollow[chatId]) {
-    competitionsToFollow[chatId].forEach(n => {
-      n.createTopList()
-    })
+    competitionsToFollow[chatId].createTopList()
   } else {
-    bot.sendMessage(chatId, "Pitäis varmaa tietää, et mitä kisaa me seurataan");
+    bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
   }
 });
 
