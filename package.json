@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo && exit 1",
-    "start": "node app.js",
+    "start": "node --experimental-modules app.mjs",
     "lint": "eslint"
   },
   "author": "",

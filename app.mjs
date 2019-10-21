@@ -1,12 +1,19 @@
-const express = require("express"); // eslint-disable-line
-const fetch = require("node-fetch"); // eslint-disable-line
-const TelegramBot = require("node-telegram-bot-api"); // eslint-disable-line
-const dotenv = require('dotenv');
-dotenv.config();
+// Node Modules
+import express from 'express'
+import fetch from 'node-fetch'
+import TelegramBot from 'node-telegram-bot-api'
+import dotenv from 'dotenv'
+dotenv.config()
 
-const app = express();
-const giphyId = "2_arxUyj"
-const giphySecret = "mIilkLkwhESM_mGWHshoZdcZrbotv5dZAuHwT7lkiI1iG7hJrV01C6vmF16TRNKO"
+// Import all the quotes, future these will be in DB
+import {sakariNames, sakariResponses, randomQuote} from './responses/default.mjs'
+import {narratives, scores, goodStart, badStart, neutralStart, verbs, throws, players} from './responses/game.mjs'
+
+// Defined on .env file
+const giphyId = process.env.GIPHYID
+const giphySecret = process.env.GIPHYSERCRET
+const token = process.env.TOKEN
+
 let score = {};
 let data = undefined;
 let newRound = undefined;
@@ -17,9 +24,8 @@ let competitionId;
 let playersAnnounced = false;
 let games = {};
 let date = new Date().toLocaleDateString();
-const token = process.env.TOKEN
-const bot = new TelegramBot(token, { polling: true });
 
+const bot = new TelegramBot(token, { polling: true });
 
 bot.onText(/\/lopeta/, msg => {
   const chatId = msg.chat.id;
@@ -30,10 +36,6 @@ bot.onText(/\/lopeta/, msg => {
     bot.sendMessage(chatId, "Ehämmä seuraa täs mitää saatana.");
   }
 });
-
-const sakariNames = ["Sakari", "Sakke"]
-const sakariResponses = ["Pää kii aki!", "Turhaa mua syytät, salee topin vika.", "Hyvä vadee!", "Mä oon aina oikeessa!",
-                  "NO MITÄ???", "Mitä sä mua huutelet??", "Huoh....", "Hiljaa saatana!", "Eiku C-Line!"]
 
 bot.on("text", msg => {
   let said = false
@@ -434,11 +436,8 @@ function addPlusSignToScore(score) {
 }
 
 function getPhraseForScore(player, hole) {
-  console.log(hole)
   let score = player.PlayerResults[hole].Result;
   let obj = undefined;
-  console.log(hole)
-  console.log(score)
   if (score == 1)
     obj = {
       score: 1,
@@ -491,164 +490,6 @@ function getStartText() {
   const obj = narratives[getRandom(narratives.length)];
   return `${obj.firstPart}\n`;
 }
-
-const narratives = [
-  { firstPart: "Ihmiset ovat suorittaneet firsbeegolf heittoja!" },
-  { firstPart: "Jahas ja tilannekatsauksen aika!",},
-  { firstPart: "HOI! Nyt taas tapahtuu!"},
-  { firstPart: "HUOMIO!" },
-  { firstPart: "Ja taas mennään!"},
-  { firstPart: "HEIHEIHEI, joku teki jotain!"},
-  { firstPart: "Tulostaulussa liikehdintää!"},
-  { firstPart: "Ja taas on väyliä saatettu loppuun."}
-];
-
-const scores = [
-  {
-    score: 2,
-    text: ["ruman tuplabogin", "tsägällä tuplan", "kaks päälle", "DOUBLE BOGEYN"]
-  },
-  {
-    score: 1,
-    text: [
-      "bogin",
-      "boggelin",
-      "turhan bogin",
-      "bogin",
-      "ruskean boggelin",
-    ]
-  },
-  {
-    score: 0,
-    text: [
-      "parin",
-      "PROFESSIONAL AVERAGEN",
-      "ihannetuloksen",
-      "hemmetin tylsän paarin",
-      "tuuripaarin",
-      "scramblepaarin",
-      "tsägällä paarin",
-      "taitopaarin",
-    ]
-  },
-  {
-    score: -1,
-    text: [
-      "birdien",
-      "lintusen",
-      "tirpan",
-      "vitunmoisen tuuripörön",
-      "pörön",
-      "hemmetin kauniin pirkon",
-      "pirkon"
-    ]
-  },
-  { score: -2, text: ["eaglen?? SIIS EAGLEN! En usko", "KOTKAN"] },
-  { score: -3, text: ["ALBATROSSIN?? Salee merkkausvirhe"] }
-];
-
-const goodStart = [
-  "MAHTAVA SUORITUS!",
-  "USKOMATON TEKO!",
-  "ENNENÄKEMÄTÖNTÄ TOIMINTAA!",
-  "Wouuuuu, kyllä nyt kelpaa!",
-  "Mahtavaa peliä, ei voi muuta sanoa.",
-  "Siis huhu, aika huikeeta!",
-  "Tää dude on iha samaa tasoo ku pauli tai riki!",
-  "Kyllä nyt ollaan sankareita!",
-  "WOUUUUU!",
-  "Hellurei hellurei vääntö on hurjaa!",
-  "No nyt taas! Näin sen kuuluukin mennä!",
-  "Olikohan vahinko, ei tämmöstä yleensä nähä!",
-  "JUMALISTE! Oiskohan sittenki vielä sauma mitaleille!",
-  "Tämmöstä! Tämmöstä sen olla pitää!",
-  "Nyt ollaa jo lähellä tonninmiehen tasoa!",
-  "JA MAALILAITE RÄJÄHTÄÄ!!",
-  "Täällä taas nostellaan häränsilmästä limppuja!"
-];
-const badStart = [
-  "Voi surkujen surku!",
-  "Voi kyynelten kyynel!",
-  "No ohan tää vähän vaikee laji!",
-  "Saatana vois tää spede vaik denffata.",
-  "Kannattiko ees tulla näihin kisoihin??",
-  "Säälittävää tekemistä taas...",
-  "Naurettavaa toimintaa!",
-  "Miten voi taas pelata näin?",
-  "En voi uskoa silmiäni!",
-  "Miten on mahdollista taas?",
-  "Näkivätkö silmäni oikein?",
-  "HAHAHAHAHAHA!",
-  "\u{1F603}\u{1F603}\u{1F603}\u{1F603}\u{1F603}",
-  "Ei vittu, jopa mä oisin pöröttäny ton mut ei... Ei ei ei.",
-  "Ei jumalauta!",
-  "Vittu mitä paskaa, ei kiinnosta ees seurata tätä pelii jos taso on tää!!",
-  "Siis mee roskii!",
-  "Noh, toivottavasti ens kerralla käy parempi tuuri.",
-  "Voi harmi, hyvä yritys oli mutta nyt kävi näin.",
-  "Punasta korttiin ja matka kohti uusia pettymyksiä!",
-  "PERSE! Tsemppiä nyt saatana!",
-  "HYVÄ VADEE!",
-  "Taso täällä taas ku MA6.",
-  "NYT JUMALAUTA, VÄHÄN EES TSEMPPIÄ!",
-  "Haha, emmä tienny et tää on näin paska!",
-  "No nyt oli kyllä paskaa tuuria!",
-  "Kävipä hyvä tuuri, ois voinu olla nimittäi VIELÄ PASKEMPAA!!",
-  "Nyt on kyl taas TUOMIOPÄIVÄ,  ON TUOMIOPÄIVÄ, on KEINOSEN NIMIPÄIVÄ!"
-];
-const neutralStart = [
-  "Onpahan tylsää...",
-  "Nyt kun olisi aika hyökätä, niin mitä hän tekee?",
-  "Ei tälläsellä pelillä kyllä mitaleille mennä :X",
-  "Noniin, lisää harmaataa korttiin!",
-  "On se ihannetuloskin tulos, kun",
-  "buuuu!",
-  "Ja ei taaskaa mitään yritystä.",
-  "Parasta annettiin ja paskaa tehtiin.",
-  "Jahas, yhtä surullista tekemistä ku asuminen Vantaalla.",
-  "Hienosti! Vaikea väylä, mutta kyllä kelpaa.",
-  "Mitähän tähän sit taas sanois?",
-  "Ei huono!",
-  "Joopajoooooo...",
-  "Yrittäisit edes.",
-  "Ei tällä paljoa fieldille hävitä!",
-  "Noh aika harvat tällä väylällä paremmin heittää.",
-  "Tämmösellä väylällä näin paskaa, on kyl surullista.",
-  "Melkeen ymmärtäisin, jos ois ees vaikee väylä.",
-  "Noh, ehkä seuraavalla väylällä sitten paremmin..."
-];
-const verbs = [
-  "otti",
-  "sai",
-  "suoritti",
-  "taisteli",
-  "möyri",
-  "heitti",
-  "viskoi",
-  "rämisteli",
-  "scrambläsi",
-  "liidätteli",
-  "paiskasi",
-  "nakkeli",
-  "sinkosi",
-  "nosti",
-  "lapioi"
-];
-const throws = [
-  "fisbeegolfheitolla",
-  "heitolla",
-  "roiskasulla",
-  "hyppyputilla"
-];
-const players = ["Jenni Grönvall", "Ville Saarinen", "Topi Stenman", "Valtteri Varmola", "Jon Grönvall",
-"Nestori Vainio", "Klaus Väisälä", "Wilhelm Takala", "Antti Räisänen", "Aki Laaksonen", "Nitta Stenman",
-"Lauri Saarinen", "Pekka Vajanto", "Ilmari Korpela", "Hanna Väisälä", "Jori Nurminen", "Aki Tiittanen", "jeee", "asdfasdf",
-"Topi Stenman, Aki Laaksonen"];
-
-const randomQuote = ["Paska puhetta...", "Antsaa hyssessä!", "Voimaa ja kulmaa \u{1F4AA}", "No en tosta kyllä tiiä, mut on ne prodigyn lätyt kyllä paskoja.",
-"No niinpä.", "Pakko muuten todeta, et on se Pauli vaa maailman paras frisbeegolffari!", "EIHÄN??", "HYVÄ VADEE!", "Tilanteesta oltais selvitty satasen roci heitolla...",
-"Aijaaok", "Tiiä sitte siitäkää", "\u{1F603}\u{1F603}\u{1F603}\u{1F603}\u{1F603}", "Ennenkaikkea joukkue!", "Ennenkaikkea layuppi!", "Nukuttii ja mentii eteenpäin!",
-"Nämä on ny näitä", "Oispa kaljaa...", "Eiku C-Line!!"]
 
 const getData = async url => {
   try {
@@ -991,9 +832,5 @@ const handicaps = [
   {score: 720, handicap: -18}
 ]
 
-
-app.listen(5000, "127.0.0.1", function() {
-  console.log(token)
-
-  countScores()
-});
+const app = express();
+app.listen(5000, "127.0.0.1", function() {});
