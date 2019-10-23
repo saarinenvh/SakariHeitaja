@@ -17,9 +17,9 @@ import {
 } from "./responses/default.mjs";
 
 // Custom Modules & Functions
+import * as Helpers from "./helpers/helpers.mjs";
 import HandicappedScores from "./handicap/calc.mjs";
 import Game from "./game/game.mjs";
-import { getRandom } from "./helpers/helpers.mjs";
 import { getData, getGiphy } from "./async/functions.mjs";
 import { bot } from "./bot.mjs";
 import {
@@ -27,7 +27,8 @@ import {
   sendGifphy,
   vade,
   kukakirjaa,
-  helpText
+  helpText,
+  sendWeatherMessage
 } from "./stupidfeatures/collection.mjs";
 
 let competitionsToFollow = {};
@@ -69,18 +70,18 @@ bot.on("text", msg => {
   const chatId = msg.chat.id;
   console.log(chatId);
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
-    if (getRandom(3) == 1) {
+    if (Helpers.getRandom(3) == 1) {
       bot.sendMessage(
         chatId,
-        sakariResponses[getRandom(sakariResponses.length)]
+        sakariResponses[Helpers.getRandom(sakariResponses.length)]
       );
       said = true;
     }
   }
 
-  const rand = getRandom(50);
+  const rand = Helpers.getRandom(50);
   if (rand === 1 && said == false) {
-    bot.sendMessage(chatId, randomQuote[getRandom(randomQuote.length)]);
+    bot.sendMessage(chatId, randomQuote[Helpers.getRandom(randomQuote.length)]);
   }
 });
 
@@ -187,52 +188,19 @@ bot.onText(/\/lisaa (.+)/, (msg, match) => {
 bot.onText(/\/saa (.+)/, (msg, match) => {
   try {
     const chatId = msg.chat.id;
-    console.log(match[1]);
     bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
-    weatherresponse(match[1], chatId);
+    sendWeatherMessage(match[1], chatId);
   } catch (e) {
     console.log(e);
   }
 });
 
-async function weatherresponse(city, chatId) {
-  const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=fi&apikey=${process.env.OPENWEATHERMAP_APIKEY}`; // eslint-disable-line
-  const response = await getData(url);
-  if (response.cod === "404") {
-    bot.sendMessage(chatId, "Tommosta mestaahan ei oo kyl olemassakaa.");
-  } else {
-    bot.sendMessage(chatId, createWeatherMessage(response), {
-      parse_mode: "HTML"
-    });
-  }
-}
-
-function createWeatherMessage(data) {
-  let message = `${weatherEmojis[data.weather[0].main]} ${
-    data.name
-  } <b>${Math.round(data.main.temp * 10) / 10}${String.fromCharCode(
-    176
-  )}C</b> ${weatherEmojis[data.weather[0].main]} \n`;
-  message += `Tällä hetkellä siis <b>${data.weather[0].description}</b>.\n`;
-  message += `Aurinko nousee <b>${createDate(
-    data.sys.sunrise
-  )}</b> \u{1f305}\n`;
-  message += `Aurinko laskee <b>${createDate(data.sys.sunset)}</b> \u{1f307}\n`;
-  return message;
-}
-
-function createDate(unix_timestamp) {
-  let date = new Date(unix_timestamp * 1000);
-  let hours = date.getHours();
-  let minutes = "0" + date.getMinutes();
-  return hours + ":" + minutes.substr(-2);
-}
-
 function startTimer() {
-  const chatId = -1001107508068;
+  const chatId = -1001107508068; // SANKARIID
+  // const chatId = 69194391; // OMA ID
   let now = new Date();
   let millisTill09 =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 15, 0, 0) -
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 7, 40, 0) -
     now;
   if (millisTill09 < 0) {
     millisTill09 += 86400000; // it's after 10am, try 10am tomorrow.
@@ -241,14 +209,15 @@ function startTimer() {
   console.log(`MS to next morning ${millisTill09}`);
   setTimeout(async function() {
     let message = `${
-      randomGoodMorning[getRandom(randomGoodMorning.length)]
-    } Kello on 09.00 \n`;
-    message += "Tänään on sit taas tämmöstä keliä luvassa:";
+      randomGoodMorning[Helpers.getRandom(randomGoodMorning.length)]
+    }Kello on <b>${Helpers.formatDate(
+      new Date()
+    )}</b> & tämmöstä keliä ois sit tänää taas luvassa.`;
     bot.sendMessage(chatId, message, { parse_mode: "html" });
-    await weatherresponse("espoo", chatId);
+    await sendWeatherMessage("espoo", chatId);
     bot.sendMessage(chatId, "Ja tästä päivä käyntiin!");
     await sendGifphy(
-      giphySearchWords[getRandom(giphySearchWords.length)],
+      giphySearchWords[Helpers.getRandom(giphySearchWords.length)],
       chatId
     );
     startTimer();

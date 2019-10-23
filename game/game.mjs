@@ -10,7 +10,7 @@ import {
   players
 } from "../responses/game.mjs";
 import { bot } from "../bot.mjs";
-import { getRandom } from "../helpers/helpers.mjs";
+import * as Helpers from "../helpers/helpers.mjs";
 
 class Game {
   constructor(id, chatId) {
@@ -266,7 +266,7 @@ class Game {
   createPhrase(player) {
     if (this.getHole(player.Name) !== -1) {
       const obj = this.getPhraseForScore(player, this.getHole(player.Name));
-      const randomVerb = verbs[getRandom(verbs.length)];
+      const randomVerb = verbs[Helpers.getRandom(verbs.length)];
       return {
         hole: this.getHole(player.Name),
         text: `${obj.startText} <b>${player.Name}</b> ${randomVerb} ${
@@ -288,22 +288,22 @@ class Game {
     if (score == 1)
       obj = {
         score: 1,
-        startText: goodStart[getRandom(goodStart.length)],
+        startText: goodStart[Helpers.getRandom(goodStart.length)],
         scoreText: "ÄSSÄN!"
       };
     else if (player.PlayerResults[hole].Diff > 2)
       obj = {
         score: score,
-        startText: badStart[getRandom(badStart.length)],
+        startText: badStart[Helpers.getRandom(badStart.length)],
         scoreText: `niin ison scoren, että ei mahdu edes näytölle (${score})`
       };
     else if (player.PlayerResults[hole].Diff > 0)
       obj = {
         score: score,
-        startText: badStart[getRandom(badStart.length)],
+        startText: badStart[Helpers.getRandom(badStart.length)],
         scoreText: scores.find(n => n.score == player.PlayerResults[hole].Diff)
           .text[
-          getRandom(
+          Helpers.getRandom(
             scores.find(n => n.score == player.PlayerResults[hole].Diff).text
               .length
           )
@@ -312,18 +312,18 @@ class Game {
     else if (player.PlayerResults[hole].Diff == 0) {
       obj = {
         score: score,
-        startText: neutralStart[getRandom(neutralStart.length)],
+        startText: neutralStart[Helpers.getRandom(neutralStart.length)],
         scoreText: scores.find(n => n.score == 0).text[
-          getRandom(scores.find(n => n.score == 0).text.length)
+          Helpers.getRandom(scores.find(n => n.score == 0).text.length)
         ]
       };
     } else {
       obj = {
         score: score,
-        startText: goodStart[getRandom(goodStart.length)],
+        startText: goodStart[Helpers.getRandom(goodStart.length)],
         scoreText: scores.find(n => n.score == player.PlayerResults[hole].Diff)
           .text[
-          getRandom(
+          Helpers.getRandom(
             scores.find(n => n.score == player.PlayerResults[hole].Diff).text
               .length
           )
@@ -334,7 +334,7 @@ class Game {
   }
 
   getStartText() {
-    const obj = narratives[getRandom(narratives.length)];
+    const obj = narratives[Helpers.getRandom(narratives.length)];
     return `${obj.firstPart}\n`;
   }
 }

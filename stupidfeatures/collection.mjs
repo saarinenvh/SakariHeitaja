@@ -1,6 +1,7 @@
 import { bot } from "../bot.mjs";
-import { getGiphy } from "../async/functions.mjs";
-import { getRandom } from "../helpers/helpers.mjs";
+import { getGiphy, getData } from "../async/functions.mjs";
+import * as Helpers from "../helpers/helpers.mjs";
+import { weatherEmojis } from "../responses/default.mjs";
 
 // Sends gif from gfycat to channel
 export const gifplz = bot.onText(/\/gifplz (.+)/, (msg, match) => {
@@ -12,18 +13,21 @@ export function sendGifphy(str, chatId) {
   getGiphy(url).then(n => {
     const response = JSON.parse(n);
     const images = response.gfycats.map(n => n.mp4Url);
-    const test = bot.sendVideo(chatId, images[getRandom(images.length)]);
+    const test = bot.sendVideo(
+      chatId,
+      images[Helpers.getRandom(images.length)]
+    );
   });
 }
 
 // Sends message containing "Hyvä vade" text with random amount of e:s and ! marks.
 export const vade = bot.onText(/\/hyva/, (msg, match) => {
-  let amount = getRandom(100);
+  let amount = Helpers.getRandom(100);
   let str = "Hyvä Vade";
   for (let i = 0; i < amount; i++) {
     str = str.concat("e");
   }
-  amount = getRandom(100);
+  amount = Helpers.getRandom(100);
   for (let i = 0; i < amount; i++) {
     str = str.concat("!");
   }
@@ -35,7 +39,7 @@ export const vade = bot.onText(/\/hyva/, (msg, match) => {
 export const kukakirjaa = bot.onText(/\/kukakirjaa (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const players = match[1].split(" ");
-  const winner = players[getRandom(players.length)];
+  const winner = players[Helpers.getRandom(players.length)];
   bot.sendMessage(chatId, ` \u{1F3B5} On arvontalaulun aika! \u{1F3B5}`);
 
   setTimeout(n => {
@@ -75,3 +79,32 @@ Ja muuta hauskaa mitä hommailen:\n
 /pelei - Listaa kaikki hep huudot`;
   bot.sendMessage(chatId, helpText);
 });
+
+// Sends message about weather at wanted city given by parameter to the chat that given in id
+export async function sendWeatherMessage(city, chatId) {
+  const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=fi&apikey=${process.env.OPENWEATHERMAP_APIKEY}`; // eslint-disable-line
+  const response = await getData(url);
+  if (response.cod === "404") {
+    bot.sendMessage(chatId, "Tommosta mestaahan ei oo kyl olemassakaa.");
+  } else {
+    bot.sendMessage(chatId, createWeatherMessage(response), {
+      parse_mode: "HTML"
+    });
+  }
+}
+
+function createWeatherMessage(data) {
+  let message = `${weatherEmojis[data.weather[0].main]} ${
+    data.name
+  } <b>${Math.round(data.main.temp * 10) / 10}${String.fromCharCode(
+    176
+  )}C</b> ${weatherEmojis[data.weather[0].main]} \n`;
+  message += `Tällä hetkellä siis <b>${data.weather[0].description}</b>.\n`;
+  message += `Aurinko nousee <b>${Helpers.createDate(
+    data.sys.sunrise
+  )}</b> \u{1f305}\n`;
+  message += `Aurinko laskee <b>${Helpers.createDate(
+    data.sys.sunset
+  )}</b> \u{1f307}\n`;
+  return message;
+}
