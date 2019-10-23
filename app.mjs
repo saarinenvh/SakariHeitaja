@@ -59,6 +59,8 @@ async function createRecipeMessage(chatId) {
     message += `${i + 1}. ${n.body} \n`;
   });
   bot.sendMessage(chatId, message);
+  console.log(dish.media[0].file.url.substring(2));
+  bot.sendPhoto(chatId, dish.media[0].file.url.substring(2));
 }
 
 bot.onText(/\/tasoitus (.+)/, (msg, match) => {
