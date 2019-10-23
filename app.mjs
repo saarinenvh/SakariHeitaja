@@ -28,7 +28,8 @@ import {
   vade,
   kukakirjaa,
   helpText,
-  sendWeatherMessage
+  sendWeatherMessage,
+  createAndSendRecipeMessage
 } from "./stupidfeatures/collection.mjs";
 
 let competitionsToFollow = {};
@@ -36,32 +37,8 @@ let games = {};
 let date = new Date().toLocaleDateString();
 
 bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
-  createRecipeMessage(msg.chat.id);
+  createAndSendRecipeMessage(msg.chat.id);
 });
-
-async function createRecipeMessage(chatId) {
-  const url =
-    "https://api.s-cloud.fi/sok/aws/recipes-delivery/recipes-delivery/v1/recipes?fields=name%2Cdescription%2Cmedia%2Ccategories%2CusageRights%2Cpublisher%2CcookTime%2Cingredients%2Csteps&channel=yhteishyva&client_id=444c050f-ac71-43f9-9f37-c5cbda4c1cbb&environment=master&language=fi&limit=100";
-  let data = await getData(url);
-  let dish = data.results[Helpers.getRandom(data.results.length)];
-  let message = `${dish.name} ${dish.cookTime}min\n\n`;
-  message += dish.description + "\n\n";
-  dish.ingredients.forEach(n => {
-    if (Object.keys(n).includes("ingredientTitle")) {
-      message += n["ingredientTitle"] + "\n";
-    } else {
-      message += n.name + "\n";
-      n.ingredients.forEach(i => (message += i["ingredientTitle"] + "\n"));
-    }
-  });
-  message += "\n";
-  dish.steps.forEach((n, i) => {
-    message += `${i + 1}. ${n.body} \n`;
-  });
-  bot.sendMessage(chatId, message);
-  console.log(dish.media[0].file.url.substring(2));
-  bot.sendPhoto(chatId, dish.media[0].file.url.substring(2));
-}
 
 bot.onText(/\/tasoitus (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
