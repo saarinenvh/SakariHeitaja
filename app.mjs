@@ -68,7 +68,7 @@ bot.onText(/\/tasoitus (.+)/, (msg, match) => {
 bot.on("text", msg => {
   let said = false;
   const chatId = msg.chat.id;
-  console.log(chatId);
+
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
     if (Helpers.getRandom(3) == 1) {
       bot.sendMessage(
@@ -79,8 +79,16 @@ bot.on("text", msg => {
     }
   }
 
+  if (
+    msg.text.toLowerCase().includes("jallu") &&
+    Helpers.getRandom(2) === 1 &&
+    !said
+  ) {
+    bot.sendMessage(chatId, "JALLU!");
+  }
+
   const rand = Helpers.getRandom(50);
-  if (rand === 1 && said == false) {
+  if (rand === 1 && !said) {
     bot.sendMessage(chatId, randomQuote[Helpers.getRandom(randomQuote.length)]);
   }
 });
@@ -127,7 +135,6 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
     chatId,
     "Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson"
   );
-
   competitionsToFollow[chatId] = new Game(competitionId, chatId);
   competitionsToFollow[chatId].startFollowing();
 });
