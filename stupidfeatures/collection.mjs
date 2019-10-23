@@ -100,6 +100,7 @@ function createWeatherMessage(data) {
     176
   )}C</b> ${weatherEmojis[data.weather[0].main]} \n`;
   message += `Tällä hetkellä siis <b>${data.weather[0].description}</b>.\n`;
+  message += `Tuulta puskis <b>${data.wind.speed} m/s</b>.\n`;
   message += `Aurinko nousee <b>${Helpers.createDate(
     data.sys.sunrise
   )}</b> \u{1f305}\n`;
