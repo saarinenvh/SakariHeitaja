@@ -1,28 +1,27 @@
 export const narratives = [
   { firstPart: "Ihmiset ovat suorittaneet firsbeegolf heittoja!" },
-  { firstPart: "Jahas ja tilannekatsauksen aika!",},
-  { firstPart: "HOI! Nyt taas tapahtuu!"},
+  { firstPart: "Jahas ja tilannekatsauksen aika!" },
+  { firstPart: "HOI! Nyt taas tapahtuu!" },
   { firstPart: "HUOMIO!" },
-  { firstPart: "Ja taas mennään!"},
-  { firstPart: "HEIHEIHEI, joku teki jotain!"},
-  { firstPart: "Tulostaulussa liikehdintää!"},
-  { firstPart: "Ja taas on väyliä saatettu loppuun."}
+  { firstPart: "Ja taas mennään!" },
+  { firstPart: "HEIHEIHEI, joku teki jotain!" },
+  { firstPart: "Tulostaulussa liikehdintää!" },
+  { firstPart: "Ja taas on väyliä saatettu loppuun." }
 ];
 
 export const scores = [
   {
     score: 2,
-    text: ["ruman tuplabogin", "tsägällä tuplan", "kaks päälle", "DOUBLE BOGEYN"]
+    text: [
+      "ruman tuplabogin",
+      "tsägällä tuplan",
+      "kaks päälle",
+      "DOUBLE BOGEYN"
+    ]
   },
   {
     score: 1,
-    text: [
-      "bogin",
-      "boggelin",
-      "turhan bogin",
-      "bogin",
-      "ruskean boggelin",
-    ]
+    text: ["bogin", "boggelin", "turhan bogin", "bogin", "ruskean boggelin"]
   },
   {
     score: 0,
@@ -34,7 +33,7 @@ export const scores = [
       "tuuripaarin",
       "scramblepaarin",
       "tsägällä paarin",
-      "taitopaarin",
+      "taitopaarin"
     ]
   },
   {
@@ -151,7 +150,25 @@ export const throws = [
   "hyppyputilla"
 ];
 
-export let players = ["Jenni Grönvall", "Ville Saarinen", "Topi Stenman", "Valtteri Varmola", "Jon Grönvall",
-"Nestori Vainio", "Klaus Väisälä", "Wilhelm Takala", "Antti Räisänen", "Aki Laaksonen", "Nitta Stenman",
-"Lauri Saarinen", "Pekka Vajanto", "Ilmari Korpela", "Hanna Väisälä", "Jori Nurminen", "Aki Tiittanen", "jeee", "asdfasdf",
-"Topi Stenman, Aki Laaksonen"];
+export let players = [
+  "Jenni Grönvall",
+  "Ville Saarinen",
+  "Topi Stenman",
+  "Valtteri Varmola",
+  "Jon Grönvall",
+  "Nestori Vainio",
+  "Klaus Väisälä",
+  "Wilhelm Takala",
+  "Antti Räisänen",
+  "Aki Laaksonen",
+  "Nitta Stenman",
+  "Lauri Saarinen",
+  "Pekka Vajanto",
+  "Ilmari Korpela",
+  "Hanna Väisälä",
+  "Jori Nurminen",
+  "Aki Tiittanen",
+  "jeee",
+  "asdfasdf",
+  "Topi Stenman, Aki Laaksonen"
+];

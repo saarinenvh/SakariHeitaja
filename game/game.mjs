@@ -1,13 +1,21 @@
-import {getData} from '../async/functions.mjs'
-import {narratives, scores, goodStart, badStart, neutralStart, verbs, throws, players} from '../responses/game.mjs'
-import {bot} from '../bot.mjs'
-import {getRandom} from '../helpers/helpers.mjs'
-
+import { getData } from "../async/functions.mjs";
+import {
+  narratives,
+  scores,
+  goodStart,
+  badStart,
+  neutralStart,
+  verbs,
+  throws,
+  players
+} from "../responses/game.mjs";
+import { bot } from "../bot.mjs";
+import { getRandom } from "../helpers/helpers.mjs";
 
 class Game {
   constructor(id, chatId) {
     this.id = id;
-    this.chatId = chatId
+    this.chatId = chatId;
     this.score = {};
     this.data = undefined;
     this.newRound = undefined;
@@ -29,7 +37,11 @@ class Game {
       await getData(`${this.baseUrl}${this.id}`).then(newData => {
         try {
           // Init the first data and find players to follow
-          if (!this.data && Object.keys(newData).includes("Competition") && newData.Competition != null) {
+          if (
+            !this.data &&
+            Object.keys(newData).includes("Competition") &&
+            newData.Competition != null
+          ) {
             this.data = newData;
             this.findPlayersToFollow(this.chatId);
           }
@@ -37,29 +49,34 @@ class Game {
           // Check if data exists and there are changes
           if (this.data && this.data != newData) {
             this.newRound = newData;
-            const combinedComments = {}
+            const combinedComments = {};
 
             // Create comments for changed happened in this interval
             this.playersToFollow.forEach(n => {
               const comment = this.checkChangesAndComment(n.Name);
-              if (comment && !Object.keys(combinedComments).includes(comment.hole.toString())) {
+              if (
+                comment &&
+                !Object.keys(combinedComments).includes(comment.hole.toString())
+              ) {
                 combinedComments[comment.hole] = [];
               }
               if (comment) {
-                combinedComments[comment.hole].push(comment.text)
+                combinedComments[comment.hole].push(comment.text);
               }
             });
 
             // Create message from comments created
-            let str = `${this.getStartText()} \n`
+            let str = `${this.getStartText()} \n`;
             Object.keys(combinedComments).forEach(n => {
-              str = str.concat(`*********** Väylä numero ${parseInt(n) + 1} ***********\n\n`)
+              str = str.concat(
+                `*********** Väylä numero ${parseInt(n) + 1} ***********\n\n`
+              );
               combinedComments[n].forEach(i => {
-                str = str.concat(`${i} \n\n`)
-              })
-            })
+                str = str.concat(`${i} \n\n`);
+              });
+            });
             if (Object.keys(combinedComments).length > 0) {
-            bot.sendMessage(this.chatId, str, {parse_mode: 'HTML'});
+              bot.sendMessage(this.chatId, str, { parse_mode: "HTML" });
             }
 
             // Update the "new data" as old
@@ -69,18 +86,24 @@ class Game {
 
           // Check if competition has ended
           if (this.hasCompetitionEnded()) {
-            this.following = false
-            setTimeout( n => {
-              bot.sendMessage(this.chatId, "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!");
-            }, 1000)
-            setTimeout( n => {
-              bot.sendMessage(this.chatId, createTopList().replace(/['"]+/g, ""));
-            }, 2000)
+            this.following = false;
+            setTimeout(n => {
+              bot.sendMessage(
+                this.chatId,
+                "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!"
+              );
+            }, 1000);
+            setTimeout(n => {
+              bot.sendMessage(
+                this.chatId,
+                this.createTopList().replace(/['"]+/g, "")
+              );
+            }, 2000);
           } else {
-            console.log(`${this.id} - Pelaamattomia väyliä jäljellä`)
+            console.log(`${this.id} - Pelaamattomia väyliä jäljellä`);
           }
-        } catch(e) {
-          console.log(e)
+        } catch (e) {
+          console.log(e);
         }
       });
 
@@ -91,12 +114,14 @@ class Game {
     }
   }
 
-   hasCompetitionEnded() {
-    let bool = this.playersToFollow.map(n => n.PlayerResults.every(hole => !Array.isArray(hole)))
-    return bool[0]
+  hasCompetitionEnded() {
+    let bool = this.playersToFollow.map(n =>
+      n.PlayerResults.every(hole => !Array.isArray(hole))
+    );
+    return bool[0];
   }
 
-   findPlayersToFollow() {
+  findPlayersToFollow() {
     this.playersToFollow = [];
 
     // Check matching players
@@ -117,11 +142,11 @@ class Game {
     }
   }
 
-   getScoreByPlayerName(name) {
+  getScoreByPlayerName(name) {
     return this.data.Competition.Results.find(n => n.Name == name);
   }
 
-   getDivisions() {
+  getDivisions() {
     let divisions = [];
     this.data.Competition.Results.forEach(n => {
       if (!divisions.includes(n.ClassName)) {
@@ -131,7 +156,7 @@ class Game {
     return divisions;
   }
 
-   createTopList() {
+  createTopList() {
     const divisions = this.getDivisions();
     const rankings = {};
     divisions.forEach(n => {
@@ -152,7 +177,7 @@ class Game {
     bot.sendMessage(this.chatId, str.replace(/['"]+/g, ""));
   }
 
-   getTopFive(division) {
+  getTopFive(division) {
     let result = [];
     this.data.Competition.Results.forEach(n => {
       if (n.OrderNumber < 5 && n.ClassName == division) result.push(n);
@@ -160,7 +185,7 @@ class Game {
     return result.sort((a, b) => (a.OrderNumber > b.OrderNumber ? 1 : -1));
   }
 
-   getPlayerToFollowThatArentInTopFive() {
+  getPlayerToFollowThatArentInTopFive() {
     let othersToFollow = [];
     for (let i in this.playersToFollow) {
       if (this.getTopFive().forEach(n => n.Name !== i.Name)) {
@@ -173,82 +198,91 @@ class Game {
   }
 
   // Helper  for checking changes
-   checkChangesAndComment(playerName) {
+  checkChangesAndComment(playerName) {
     const prevScore = this.playersToFollow.find(n => n.Name == playerName);
-    const newScore = this.newRound.Competition.Results.find(n => n.Name == playerName);
-    if (Object.keys(prevScore).includes("Sum") && prevScore.Sum != newScore.Sum) {
+    const newScore = this.newRound.Competition.Results.find(
+      n => n.Name == playerName
+    );
+    if (
+      Object.keys(prevScore).includes("Sum") &&
+      prevScore.Sum != newScore.Sum
+    ) {
       return this.createPhrase(newScore);
     }
   }
 
   // Returns the hole where new results came from from a certain player
-   getHole(playerName) {
-    const datalistOld = this.data.Competition.Results.find(n => n.Name == playerName).PlayerResults;
-    const datalistNew = this.newRound.Competition.Results.find(n => n.Name == playerName).PlayerResults;
+  getHole(playerName) {
+    const datalistOld = this.data.Competition.Results.find(
+      n => n.Name == playerName
+    ).PlayerResults;
+    const datalistNew = this.newRound.Competition.Results.find(
+      n => n.Name == playerName
+    ).PlayerResults;
 
     //If player has results
     if (datalistOld && datalistNew) {
-
       // Modify the scorelist, because the metrixapi sux
-      const holeMapOld = datalistOld.map( (item, index) => {
+      const holeMapOld = datalistOld.map((item, index) => {
         if (Array.isArray(item)) {
-          return {Result: "", Diff: "", OB: "", Played: false, Index: index}
+          return { Result: "", Diff: "", OB: "", Played: false, Index: index };
         } else {
-          item["Played"] = true
-          item["Index"] = index
-          return item
+          item["Played"] = true;
+          item["Index"] = index;
+          return item;
         }
-      })
+      });
 
-      const holeMapNew = datalistNew.map( (item, index) => {
+      const holeMapNew = datalistNew.map((item, index) => {
         if (Array.isArray(item)) {
-          return {Result: "", Diff: "", OB: "", Played: false, Index: index}
+          return { Result: "", Diff: "", OB: "", Played: false, Index: index };
         } else {
-          item["Played"] = true
-          item["Index"] = index
-          return item
+          item["Played"] = true;
+          item["Index"] = index;
+          return item;
         }
-      })
+      });
 
       for (let i = 0; i < holeMapNew.length; i++) {
         if (holeMapNew[i].Result !== holeMapOld[i].Result) {
-          return i
+          return i;
         }
       }
 
-      return -1
+      return -1;
     }
   }
 
-   capitalizeFirstLetter(string) {
+  capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
 
-   checkScoreAndCreatePhrase(prevDiff, newDiff) {
+  checkScoreAndCreatePhrase(prevDiff, newDiff) {
     if (this.getHole(newDiff) !== -1) {
       this.getPhraseForScore(newDiff.Name, this.getHole(newDiff));
     }
   }
 
-   createPhrase(player) {
+  createPhrase(player) {
     if (this.getHole(player.Name) !== -1) {
-    const obj = this.getPhraseForScore(player, this.getHole(player.Name));
-    const randomVerb = verbs[getRandom(verbs.length)];
-    return {hole: this.getHole(player.Name), text:`${obj.startText} <b>${
-      player.Name
-    }</b> ${randomVerb} ${
-      obj.scoreText
-    }, tällä hetkellä tuloksessa <b>${this.addPlusSignToScore(player.Diff)}</b> ja sijalla <b>${
-      player.OrderNumber
-    }</b>`};
+      const obj = this.getPhraseForScore(player, this.getHole(player.Name));
+      const randomVerb = verbs[getRandom(verbs.length)];
+      return {
+        hole: this.getHole(player.Name),
+        text: `${obj.startText} <b>${player.Name}</b> ${randomVerb} ${
+          obj.scoreText
+        }, tällä hetkellä tuloksessa <b>${this.addPlusSignToScore(
+          player.Diff
+        )}</b> ja sijalla <b>${player.OrderNumber}</b>`
+      };
     }
   }
 
-   addPlusSignToScore(score) {
+  addPlusSignToScore(score) {
     return score > 0 ? `+${score}` : `${score}`;
   }
 
-   getPhraseForScore(player, hole) {
+  getPhraseForScore(player, hole) {
     let score = player.PlayerResults[hole].Result;
     let obj = undefined;
     if (score == 1)
@@ -299,10 +333,10 @@ class Game {
     return obj;
   }
 
-   getStartText() {
+  getStartText() {
     const obj = narratives[getRandom(narratives.length)];
     return `${obj.firstPart}\n`;
   }
 }
 
-export default Game
+export default Game;

@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+import fetch from "node-fetch";
 
 export const getData = async url => {
   try {
@@ -16,4 +16,4 @@ export const getGiphy = async url => {
   } catch (error) {
     console.log(error);
   }
-}
+};
