@@ -109,18 +109,6 @@ bot.onText(/\/pelei/, (msg, match) => {
   bot.sendMessage(chatId, todaysGames());
 });
 
-// BROKEN FIX!!
-bot.onText(/\/score (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-
-  const player = data ? getScoreByPlayerName(match[1]) : null;
-  const message =
-    player != null
-      ? `${player.Name} on tuloksessa ${player.Diff} ja sijalla ${player.OrderNumber}! Hienosti`
-      : "Eihän tommone äijä oo ees jäällä, urpo";
-  bot.sendMessage(chatId, message);
-});
-
 // Starts following game with given id
 bot.onText(/\/follow (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
@@ -155,6 +143,24 @@ bot.onText(/\/top5/, msg => {
   } else {
     bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
   }
+});
+
+// BROKEN FIX!!
+bot.onText(/\/score (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  let message = "";
+
+  if (Object.keys(competitionsToFollow).includes(chatId)) {
+    const player = competitionsToFollow[chatId].data
+      ? competitionsToFollow[chatId].getScoreByPlayerName(match[1])
+      : null;
+    message =
+      player != null
+        ? `${player.Name} on tuloksessa ${player.Diff} ja sijalla ${player.OrderNumber}! Hienosti`
+        : "Eihän tommone äijä oo ees jäällä, urpo";
+  }
+
+  bot.sendMessage(chatId, message);
 });
 
 // Adds a player to the list for following players
