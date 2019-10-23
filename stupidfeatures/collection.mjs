@@ -4,16 +4,17 @@ import { getRandom } from "../helpers/helpers.mjs";
 
 // Sends gif from gfycat to channel
 export const gifplz = bot.onText(/\/gifplz (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = `https://api.gfycat.com/v1/gfycats/search?search_text=${
-    match[1]
-  }`;
+  sendGifphy(match[1], msg.chat.id);
+});
+
+export function sendGifphy(str, chatId) {
+  const url = `https://api.gfycat.com/v1/gfycats/search?search_text=${str}`;
   getGiphy(url).then(n => {
     const response = JSON.parse(n);
     const images = response.gfycats.map(n => n.mp4Url);
     const test = bot.sendVideo(chatId, images[getRandom(images.length)]);
   });
-});
+}
 
 // Sends message containing "Hyvä vade" text with random amount of e:s and ! marks.
 export const vade = bot.onText(/\/hyva/, (msg, match) => {

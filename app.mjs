@@ -10,6 +10,11 @@ import {
   randomQuote
 } from "./responses/default.mjs";
 import { players } from "./responses/game.mjs";
+import {
+  weatherEmojis,
+  randomGoodMorning,
+  giphySearchWords
+} from "./responses/default.mjs";
 
 // Custom Modules & Functions
 import HandicappedScores from "./handicap/calc.mjs";
@@ -19,6 +24,7 @@ import { getData, getGiphy } from "./async/functions.mjs";
 import { bot } from "./bot.mjs";
 import {
   gifplz,
+  sendGifphy,
   vade,
   kukakirjaa,
   helpText
@@ -61,6 +67,7 @@ bot.onText(/\/tasoitus (.+)/, (msg, match) => {
 bot.on("text", msg => {
   let said = false;
   const chatId = msg.chat.id;
+  console.log(chatId);
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
     if (getRandom(3) == 1) {
       bot.sendMessage(
@@ -177,8 +184,80 @@ bot.onText(/\/lisaa (.+)/, (msg, match) => {
   }
 });
 
+bot.onText(/\/saa (.+)/, (msg, match) => {
+  try {
+    const chatId = msg.chat.id;
+    console.log(match[1]);
+    bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
+    weatherresponse(match[1], chatId);
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+async function weatherresponse(city, chatId) {
+  const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=fi&apikey=${process.env.OPENWEATHERMAP_APIKEY}`; // eslint-disable-line
+  const response = await getData(url);
+  if (response.cod === "404") {
+    bot.sendMessage(chatId, "Tommosta mestaahan ei oo kyl olemassakaa.");
+  } else {
+    bot.sendMessage(chatId, createWeatherMessage(response), {
+      parse_mode: "HTML"
+    });
+  }
+}
+
+function createWeatherMessage(data) {
+  let message = `${weatherEmojis[data.weather[0].main]} ${
+    data.name
+  } <b>${Math.round(data.main.temp * 10) / 10}${String.fromCharCode(
+    176
+  )}C</b> ${weatherEmojis[data.weather[0].main]} \n`;
+  message += `Tällä hetkellä siis <b>${data.weather[0].description}</b>.\n`;
+  message += `Aurinko nousee <b>${createDate(
+    data.sys.sunrise
+  )}</b> \u{1f305}\n`;
+  message += `Aurinko laskee <b>${createDate(data.sys.sunset)}</b> \u{1f307}\n`;
+  return message;
+}
+
+function createDate(unix_timestamp) {
+  let date = new Date(unix_timestamp * 1000);
+  let hours = date.getHours();
+  let minutes = "0" + date.getMinutes();
+  return hours + ":" + minutes.substr(-2);
+}
+
+function startTimer() {
+  const chatId = -1001107508068;
+  let now = new Date();
+  let millisTill09 =
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 15, 0, 0) -
+    now;
+  if (millisTill09 < 0) {
+    millisTill09 += 86400000; // it's after 10am, try 10am tomorrow.
+  }
+
+  console.log(`MS to next morning ${millisTill09}`);
+  setTimeout(async function() {
+    let message = `${
+      randomGoodMorning[getRandom(randomGoodMorning.length)]
+    } Kello on 09.00 \n`;
+    message += "Tänään on sit taas tämmöstä keliä luvassa:";
+    bot.sendMessage(chatId, message, { parse_mode: "html" });
+    await weatherresponse("espoo", chatId);
+    bot.sendMessage(chatId, "Ja tästä päivä käyntiin!");
+    await sendGifphy(
+      giphySearchWords[getRandom(giphySearchWords.length)],
+      chatId
+    );
+    startTimer();
+  }, millisTill09);
+}
+
 // START SERVER
 const app = express();
 app.listen(5000, "127.0.0.1", function() {
+  startTimer();
   HandicappedScores.countScores();
 });
