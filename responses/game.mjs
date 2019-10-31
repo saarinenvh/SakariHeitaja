@@ -48,7 +48,7 @@ export const scores = [
       "pirkon"
     ]
   },
-  { score: -2, text: ["eaglen?? SIIS EAGLEN! En usko", "KOTKAN"] },
+  { score: -2, text: ["eaglen?? SIIS EAGLEN! En usko", "KOTKAN", "EAGLEN"] },
   { score: -3, text: ["ALBATROSSIN?? Salee merkkausvirhe"] }
 ];
 

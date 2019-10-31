@@ -116,6 +116,10 @@ class Game {
             // Update the "new data" as old
             this.data = this.newRound;
             this.findPlayersToFollow();
+          } else {
+            Logger.info(
+              `${this.data.Competition.Name} ${this.metrixId}: no changes`
+            );
           }
 
           // Check if competition has ended
@@ -163,9 +167,6 @@ class Game {
       setTimeout(n => {
         this.startFollowing();
         if (this.tickCounter == 0) {
-          Logger.info(
-            `${this.data.Competition.Name} ${this.metrixId}: no changes`
-          );
           this.tickCounter = 3;
         }
         this.tickCounter -= 1;
@@ -345,7 +346,62 @@ class Game {
     return score > 0 ? `+${score}` : `${score}`;
   }
 
+  async checkAndSaveSuperbScores(player, hole) {
+    let thisPlayer = this.playersToFollow.find(n => n.Name == player.Name);
+    let score = player.PlayerResults[hole].Diff;
+    console.log(player);
+
+    if (score <= -2) {
+      const course = await queries.fetchCourse(
+        this.data.Competition.CourseName
+      );
+
+      if (parseInt(player.PlayerResults[hole].Result) === 1) {
+        queries.addAce(
+          new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " "),
+          thisPlayer.id,
+          this.chatId,
+          course[0].id,
+          this.id
+        );
+      } else {
+        switch (score) {
+          case -3:
+            queries.addAlbatross(
+              new Date()
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+              thisPlayer.id,
+              this.chatId,
+              course[0].id,
+              this.id
+            );
+            break;
+          case -2:
+            queries.addEagle(
+              new Date()
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+              thisPlayer.id,
+              this.chatId,
+              course[0].id,
+              this.id
+            );
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  }
+
   getPhraseForScore(player, hole) {
+    this.checkAndSaveSuperbScores(player, hole);
     let score = player.PlayerResults[hole].Result;
     let obj = undefined;
     if (score == 1)

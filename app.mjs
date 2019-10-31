@@ -48,7 +48,6 @@ bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
 bot.onText(/\/pelit/, (msg, match) => {
   const chatId = msg.chat.id;
   queries.fetchCompetitionsByChatId(chatId).then(competitions => {
-    console.log(competitions);
     let message = "";
     if (
       competitionsToFollow[chatId] &&

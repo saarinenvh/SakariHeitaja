@@ -321,3 +321,84 @@ export async function fetchScoresByCourseName(name, chatId) {
   });
   return JSON.parse(JSON.stringify(data));
 }
+
+export async function addAce(
+  date,
+  player_id,
+  chat_id,
+  course_id,
+  competition_id
+) {
+  let data = await new Promise((res, rej) => {
+    mysql.query(
+      `INSERT INTO Aces (date,
+        player_id,
+        chat_id,
+        course_id,
+        competition_id) VALUES ('${date}', ${player_id}, ${chat_id}, ${course_id}, ${competition_id})`,
+      async function(error, results, fields) {
+        if (error) {
+          Logger.info(error);
+        } else {
+          res(results);
+          Logger.info(`ACE for player: ${player_id} - added succesfully`);
+        }
+      }
+    );
+  });
+  return data;
+}
+
+export async function addEagle(
+  date,
+  player_id,
+  chat_id,
+  course_id,
+  competition_id
+) {
+  let data = await new Promise((res, rej) => {
+    mysql.query(
+      `INSERT INTO Eagles (date,
+        player_id,
+        chat_id,
+        course_id,
+        competition_id) VALUES ('${date}', ${player_id}, ${chat_id}, ${course_id}, ${competition_id})`,
+      async function(error, results, fields) {
+        if (error) {
+          Logger.info(error);
+        } else {
+          res(results);
+          Logger.info(`EAGLE for player: ${player_id} - added succesfully`);
+        }
+      }
+    );
+  });
+  return data;
+}
+
+export async function addAlbatross(
+  date,
+  player_id,
+  chat_id,
+  course_id,
+  competition_id
+) {
+  let data = await new Promise((res, rej) => {
+    mysql.query(
+      `INSERT INTO Albatrosses (date,
+        player_id,
+        chat_id,
+        course_id,
+        competition_id) VALUES ('${date}', ${player_id}, ${chat_id}, ${course_id}, ${competition_id})`,
+      async function(error, results, fields) {
+        if (error) {
+          Logger.info(error);
+        } else {
+          res(results);
+          Logger.info(`ALBATROSS for player: ${player_id} - added succesfully`);
+        }
+      }
+    );
+  });
+  return data;
+}
