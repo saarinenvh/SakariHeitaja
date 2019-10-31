@@ -3,6 +3,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 dotenv.config();
+import Logger from "js-logger";
+Logger.useDefaults();
 
 // Import all the quotes, future these will be in DB
 import {
@@ -203,7 +205,6 @@ bot.onText(/\/lopeta (.+)/, (msg, match) => {
     competitionsToFollow[chatId][i].stopFollowing();
     competitionsToFollow[chatId].splice(i, 1);
     const test = queries.deleteCompetition(competitionId, chatId);
-    console.log(test);
     bot.sendMessage(chatId, "No olihan se kivaa taas, jatketaan ens kerralla.");
   } else {
     bot.sendMessage(chatId, "Eihän tommost kisaa ookkaa! URPå!");
@@ -269,7 +270,7 @@ bot.onText(/\/lisaa (.+)/, (msg, match) => {
           );
     });
   } catch (e) {
-    console.log(e);
+    Logger.error(e);
   }
 });
 
@@ -298,7 +299,7 @@ bot.onText(/\/poista (.+)/, (msg, match) => {
       }
     });
   } catch (e) {
-    console.log(e);
+    Logger.error(e);
   }
 });
 
@@ -308,7 +309,7 @@ bot.onText(/\/saa (.+)/, (msg, match) => {
     bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
     sendWeatherMessage(match[1], chatId);
   } catch (e) {
-    console.log(e);
+    Logger.error(e);
   }
 });
 
@@ -339,7 +340,7 @@ bot.onText(/\/tulokset (.+)/, (msg, match) => {
       }
     });
   } catch (e) {
-    console.log(e);
+    Logger.error(e);
   }
 });
 
@@ -354,7 +355,7 @@ function startTimer() {
     millisTill09 += 86400000; // it's after 10am, try 10am tomorrow.
   }
 
-  console.log(`MS to next morning ${millisTill09}`);
+  Logger.info(`MS to next morning ${millisTill09}`);
   setTimeout(async function() {
     let message = `${
       randomGoodMorning[Helpers.getRandom(randomGoodMorning.length)]
@@ -375,14 +376,20 @@ function startTimer() {
 // START SERVER
 const app = express();
 app.listen(5000, "127.0.0.1", function() {
-  startTimer();
-  HandicappedScores.countScores();
-  queries.fetchPlayers();
   init();
 });
 
 async function init() {
+  // Handles good morning message
+  startTimer();
+
+  // Counts scores for Sankaritour handicapped results
+  HandicappedScores.countScores();
+
+  // Fetches all the chats that are in the db, when message comes from new chat, it will be added to db
   chats = await queries.fetchChats();
+
+  // Creates Game objects from unfinished games
   await queries.fetchUnfinishedCompetitions().then(n => {
     n.forEach(i => {
       if (!competitionsToFollow[i.chatId]) competitionsToFollow[i.chatId] = [];
