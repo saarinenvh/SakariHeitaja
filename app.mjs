@@ -1,5 +1,6 @@
 // Node Modules
 import express from "express";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -31,13 +32,40 @@ import {
   sendWeatherMessage,
   createAndSendRecipeMessage
 } from "./stupidfeatures/collection.mjs";
+import * as queries from "./async/queries.mjs";
 
 let competitionsToFollow = {};
 let games = {};
 let date = new Date().toLocaleDateString();
+let chats = [];
 
 bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
   createAndSendRecipeMessage(msg.chat.id);
+});
+
+bot.onText(/\/pelit/, (msg, match) => {
+  const chatId = msg.chat.id;
+  queries.fetchCompetitionsByChatId(chatId).then(competitions => {
+    // Remove finished competitions from competition object
+    competitions.forEach(i => {
+      if (i.finished === 1)
+        competitionsToFollow[chatId].splice(
+          competitionsToFollow[chatId].findIndex(j => j.id === i.id),
+          1
+        );
+    });
+
+    let message = "";
+    if (competitionsToFollow[chatId]) {
+      message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
+      competitionsToFollow[chatId].forEach(n => {
+        message += `${n.id}: ${n.data.Competition.Name}, mukana ${n.playersToFollow.length} seurattavaa.\n`;
+      });
+    } else {
+      message = "Eihän tässä nyt taas mitään ole käynnissä...";
+    }
+    bot.sendMessage(chatId, message);
+  });
 });
 
 bot.onText(/\/tasoitus (.+)/, (msg, match) => {
@@ -73,6 +101,12 @@ bot.onText(/\/tasoitus (.+)/, (msg, match) => {
 bot.on("text", msg => {
   let said = false;
   const chatId = msg.chat.id;
+
+  // Add chatId to DB if doesn't exists
+  if (!chats.find(n => n.id === chatId)) {
+    let test = queries.addChatIfUndefined(chatId, msg.chat.title);
+    chats = queries.fetchChats();
+  }
 
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
     if (Helpers.getRandom(3) == 1) {
@@ -140,20 +174,46 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
     chatId,
     "Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson"
   );
-  competitionsToFollow[chatId] = new Game(competitionId, chatId);
-  competitionsToFollow[chatId].startFollowing();
+  if (!competitionsToFollow[chatId]) competitionsToFollow[chatId] = [];
+
+  queries.addCompetition(chatId, competitionId).then(n => {
+    competitionsToFollow[chatId].push(
+      new Game(n.insertId, competitionId, chatId).startFollowing()
+    );
+  });
 });
 
 // Stops following game
-bot.onText(/\/lopeta/, msg => {
+bot.onText(/\/lopeta (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
-  if (competitionsToFollow[chatId]) {
-    competitionsToFollow[chatId].stopFollowing();
+  const competitionId = match[1];
+  if (
+    competitionsToFollow[chatId].find(n => n.id === parseInt(competitionId))
+  ) {
+    const i = competitionsToFollow[chatId].findIndex(
+      n => n.id === parseInt(competitionId)
+    );
+    competitionsToFollow[chatId][i].stopFollowing();
+    competitionsToFollow[chatId].splice(i, 1);
     bot.sendMessage(chatId, "No olihan se kivaa taas, jatketaan ens kerralla.");
   } else {
-    bot.sendMessage(chatId, "Ehämmä seuraa täs mitää saatana.");
+    bot.sendMessage(chatId, "Eihän tommost kisaa ookkaa! URPå!");
   }
 });
+
+bot.onText(/\/pelaajat/, msg => {
+  const chatId = msg.chat.id;
+  getGamers(chatId);
+});
+
+async function getGamers(chatId) {
+  const players = await queries
+    .fetchPlayersLinkedToChat(chatId)
+    .then(n => n.map(n => n.name));
+  let message = `Seuraan seuraavia pelaajia: \n`;
+  players.forEach(n => (message += `${n} \n`));
+  bot.sendMessage(chatId, message);
+}
 
 // Returns top5 list for game
 bot.onText(/\/top5/, msg => {
@@ -187,11 +247,47 @@ bot.onText(/\/score (.+)/, (msg, match) => {
 bot.onText(/\/lisaa (.+)/, (msg, match) => {
   try {
     const chatId = msg.chat.id;
-    players.push(match[1]);
-    bot.sendMessage(
-      chatId,
-      `Pelaaja ${match[1]} lisätty seurattaviin pelaajiin.`
-    );
+    queries.addPlayer(match[1], chatId);
+    queries.addPlayerToPlayerToChat(match[1], chatId).then(i => {
+      i.affectedRows > 0
+        ? bot.sendMessage(
+            chatId,
+            `Pelaaja ${match[1]} lisätty seurattaviin pelaajiin.`
+          )
+        : bot.sendMessage(
+            chatId,
+            `Pelaaja ${match[1]} on jo seurattavissa pelaajissa.`
+          );
+    });
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+// Removes player from the list for following players
+bot.onText(/\/poista (.+)/, (msg, match) => {
+  try {
+    const chatId = msg.chat.id;
+    let player = queries.fetchPlayer(match[1]).then(n => {
+      if (n.length > 0) {
+        queries.deletePlayerFromPlayerToChat(n, chatId).then(i => {
+          i.affectedRows > 0
+            ? bot.sendMessage(
+                chatId,
+                `Pelaaja ${match[1]} poistettu seurattavista pelaajista.`
+              )
+            : bot.sendMessage(
+                chatId,
+                `Pelaajaa ${match[1]} ei löytynyt seurattavista pelaajista`
+              );
+        });
+      } else {
+        bot.sendMessage(
+          chatId,
+          `Pelaajaa ${match[1]} ei löytynyt järjestelmästä`
+        );
+      }
+    });
   } catch (e) {
     console.log(e);
   }
@@ -212,7 +308,7 @@ function startTimer() {
   // const chatId = 69194391; // OMA ID
   let now = new Date();
   let millisTill09 =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 7, 40, 0) -
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0) -
     now;
   if (millisTill09 < 0) {
     millisTill09 += 86400000; // it's after 10am, try 10am tomorrow.
@@ -241,4 +337,25 @@ const app = express();
 app.listen(5000, "127.0.0.1", function() {
   startTimer();
   HandicappedScores.countScores();
+  queries.fetchPlayers();
+  init();
 });
+
+async function init() {
+  chats = await queries.fetchChats();
+  await queries.fetchUnfinishedCompetitions().then(n => {
+    n.forEach(i => {
+      if (!competitionsToFollow[i.chatId]) competitionsToFollow[i.chatId] = [];
+      const game = new Game(i.id, i.metrixId, i.chatId, true);
+      game.startFollowing();
+      competitionsToFollow[i.chatId].push(game);
+    });
+  });
+}
+
+app.use(bodyParser.json());
+app.use(
+  bodyParser.urlencoded({
+    extended: true
+  })
+);

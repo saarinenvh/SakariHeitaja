@@ -6,15 +6,19 @@ import {
   badStart,
   neutralStart,
   verbs,
-  throws,
-  players
+  throws
 } from "../responses/game.mjs";
 import { bot } from "../bot.mjs";
+import * as queries from "../async/queries.mjs";
 import * as Helpers from "../helpers/helpers.mjs";
+import Logger from "js-logger";
+Logger.useDefaults();
 
 class Game {
-  constructor(id, chatId) {
+  constructor(id, metrixId, chatId, announced) {
     this.id = id;
+    this.players = [];
+    this.metrixId = metrixId;
     this.chatId = chatId;
     this.score = {};
     this.data = undefined;
@@ -23,18 +27,34 @@ class Game {
     this.baseUrl = `https://discgolfmetrix.com/api.php?content=result&id=`;
     this.following = true;
     this.competitionId;
-    this.playersAnnounced = false;
+    this.playersAnnounced = announced;
+    this.saved = false;
+    this.tickCounter = 2;
   }
 
   stopFollowing() {
     this.following = false;
   }
 
+  countNextInterval(date) {
+    const now = new Date();
+    now.setHours(now.getHours() + 2);
+    let toStart = new Date(date) - now;
+    if (toStart < 0) {
+      return 5000;
+    }
+    return toStart;
+  }
+
+  async findChannelPlayers() {
+    this.players = await queries.fetchPlayersLinkedToChat(this.chatId);
+  }
+
   async startFollowing() {
     // Condition for following the contest
     if (this.following) {
       // Async func to fetch data from metrix
-      await getData(`${this.baseUrl}${this.id}`).then(newData => {
+      await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
         try {
           // Init the first data and find players to follow
           if (
@@ -44,6 +64,9 @@ class Game {
           ) {
             this.data = newData;
             this.findPlayersToFollow(this.chatId);
+            Logger.info(
+              `Started following game: ${this.data.Competition.Name} with id ${this.metrixId}`
+            );
           }
 
           // Check if data exists and there are changes
@@ -77,6 +100,9 @@ class Game {
             });
             if (Object.keys(combinedComments).length > 0) {
               bot.sendMessage(this.chatId, str, { parse_mode: "HTML" });
+              Logger.info(
+                `Changes in game ${this.data.Competition.Name}, ${this.metrixId}`
+              );
             }
 
             // Update the "new data" as old
@@ -93,14 +119,27 @@ class Game {
                 "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!"
               );
             }, 1000);
+            queries.markCompetitionFinished(this.id);
+            queries.addCourse(this.data.Competition.CourseName);
+            queries.fetchCourse(this.data.Competition.CourseName).then(i => {
+              this.playersToFollow.forEach(n => {
+                queries.addResults(
+                  n.id,
+                  this.chatId,
+                  i[0].id,
+                  this.id,
+                  n.Diff,
+                  n.Sum
+                );
+              });
+            });
+
+            Logger.info(
+              `Game ${this.data.Competition.Name}, ${this.metrixId} is finished`
+            );
             setTimeout(n => {
-              bot.sendMessage(
-                this.chatId,
-                this.createTopList().replace(/['"]+/g, "")
-              );
+              this.createTopList();
             }, 2000);
-          } else {
-            console.log(`${this.id} - Pelaamattomia väyliä jäljellä`);
           }
         } catch (e) {
           console.log(e);
@@ -108,9 +147,21 @@ class Game {
       });
 
       // Competition continues, keep fetching
+      const nextTick = this.countNextInterval(this.data.Competition.Date);
+      if (nextTick > 5000)
+        Logger.info(
+          `${this.data.Competition.Name} ${this.metrixId} will start ${this.data.Competition.Date}, time to start ${nextTick}`
+        );
       setTimeout(n => {
         this.startFollowing();
-      }, 5000);
+        if (this.tickCounter == 0) {
+          Logger.info(
+            `${this.data.Competition.Name} ${this.metrixId}: no changes`
+          );
+          this.tickCounter = 3;
+        }
+        this.tickCounter -= 1;
+      }, nextTick);
     }
   }
 
@@ -121,12 +172,15 @@ class Game {
     return bool[0];
   }
 
-  findPlayersToFollow() {
+  async findPlayersToFollow() {
+    await this.findChannelPlayers();
     this.playersToFollow = [];
 
     // Check matching players
     this.data.Competition.Results.forEach(n => {
-      if (players.includes(n.Name)) {
+      const player = this.players.find(i => i.name === n.Name);
+      if (player) {
+        n["id"] = player.id;
         this.playersToFollow.push(n);
       }
     });
@@ -175,6 +229,7 @@ class Game {
       str = str.concat("'\n'");
     });
     bot.sendMessage(this.chatId, str.replace(/['"]+/g, ""));
+    return str.replace(/['"]+/g, "");
   }
 
   getTopFive(division) {
