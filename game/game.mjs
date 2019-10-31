@@ -50,25 +50,33 @@ class Game {
     this.players = await queries.fetchPlayersLinkedToChat(this.chatId);
   }
 
+  async initGameData() {
+    await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
+      // Init the first data and find players to follow
+      if (
+        !this.data &&
+        Object.keys(newData).includes("Competition") &&
+        newData.Competition != null
+      ) {
+        this.data = newData;
+        this.findPlayersToFollow(this.chatId);
+        Logger.info(
+          `Started following game: ${this.data.Competition.Name} with id ${this.metrixId}`
+        );
+      }
+    });
+    setTimeout(n => {
+      this.startFollowing();
+    }, 5000);
+    return this;
+  }
+
   async startFollowing() {
     // Condition for following the contest
     if (this.following) {
       // Async func to fetch data from metrix
       await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
         try {
-          // Init the first data and find players to follow
-          if (
-            !this.data &&
-            Object.keys(newData).includes("Competition") &&
-            newData.Competition != null
-          ) {
-            this.data = newData;
-            this.findPlayersToFollow(this.chatId);
-            Logger.info(
-              `Started following game: ${this.data.Competition.Name} with id ${this.metrixId}`
-            );
-          }
-
           // Check if data exists and there are changes
           if (this.data && this.data != newData) {
             this.newRound = newData;

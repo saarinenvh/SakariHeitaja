@@ -46,20 +46,25 @@ bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
 bot.onText(/\/pelit/, (msg, match) => {
   const chatId = msg.chat.id;
   queries.fetchCompetitionsByChatId(chatId).then(competitions => {
-    // Remove finished competitions from competition object
-    competitions.forEach(i => {
-      if (i.finished === 1)
-        competitionsToFollow[chatId].splice(
-          competitionsToFollow[chatId].findIndex(j => j.id === i.id),
-          1
-        );
-    });
-
+    console.log(competitions);
     let message = "";
-    if (competitionsToFollow[chatId]) {
+    if (
+      competitionsToFollow[chatId] &&
+      competitionsToFollow[chatId].length > 0
+    ) {
+      // Remove finished competitions from competition object
+      competitions.forEach(i => {
+        if (i.finished === 1)
+          competitionsToFollow[chatId].splice(
+            competitionsToFollow[chatId].findIndex(j => j.id === i.id),
+            1
+          );
+      });
+
       message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
-      competitionsToFollow[chatId].forEach(n => {
-        message += `${n.id}: ${n.data.Competition.Name}, mukana ${n.playersToFollow.length} seurattavaa.\n`;
+      competitionsToFollow[chatId].forEach((n, i) => {
+        console.log(n);
+        message += `${n.id}: ${n.data.Competition.Name}, ${n.playersToFollow.length} sankari(a). https://discgolfmetrix.com/${n.metrixId}\n`;
       });
     } else {
       message = "Eihän tässä nyt taas mitään ole käynnissä...";
@@ -177,9 +182,11 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
   if (!competitionsToFollow[chatId]) competitionsToFollow[chatId] = [];
 
   queries.addCompetition(chatId, competitionId).then(n => {
-    competitionsToFollow[chatId].push(
-      new Game(n.insertId, competitionId, chatId).startFollowing()
-    );
+    const game = new Game(n.insertId, competitionId, chatId)
+      .initGameData()
+      .then(n => {
+        competitionsToFollow[chatId].push(n);
+      });
   });
 });
 
@@ -195,6 +202,8 @@ bot.onText(/\/lopeta (.+)/, (msg, match) => {
     );
     competitionsToFollow[chatId][i].stopFollowing();
     competitionsToFollow[chatId].splice(i, 1);
+    const test = queries.deleteCompetition(competitionId, chatId);
+    console.log(test);
     bot.sendMessage(chatId, "No olihan se kivaa taas, jatketaan ens kerralla.");
   } else {
     bot.sendMessage(chatId, "Eihän tommost kisaa ookkaa! URPå!");
@@ -303,6 +312,37 @@ bot.onText(/\/saa (.+)/, (msg, match) => {
   }
 });
 
+bot.onText(/\/tulokset (.+)/, (msg, match) => {
+  try {
+    const chatId = msg.chat.id;
+    queries.fetchScoresByCourseName(match[1], chatId).then(scores => {
+      if (scores.length > 0) {
+        if (scores[0].count > 1) {
+          const coursesToText = [
+            ...new Set(scores.map(item => `${item.course}\n`))
+          ]
+            .toString()
+            .replace(",", "");
+          const message = `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${coursesToText}`;
+          bot.sendMessage(chatId, message);
+        } else {
+          const scoresToText = scores
+            .map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`)
+            .toString()
+            .replace(",", "");
+          const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${scores[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${scoresToText}</code>`;
+          bot.sendMessage(chatId, message, { parse_mode: "html" });
+        }
+      } else {
+        const message = "Eip löytyny tuloksia tolla hakusanalla :'(((";
+        bot.sendMessage(chatId, message, { parse_mode: "html" });
+      }
+    });
+  } catch (e) {
+    console.log(e);
+  }
+});
+
 function startTimer() {
   const chatId = -1001107508068; // SANKARIID
   // const chatId = 69194391; // OMA ID
@@ -347,7 +387,7 @@ async function init() {
     n.forEach(i => {
       if (!competitionsToFollow[i.chatId]) competitionsToFollow[i.chatId] = [];
       const game = new Game(i.id, i.metrixId, i.chatId, true);
-      game.startFollowing();
+      game.initGameData();
       competitionsToFollow[i.chatId].push(game);
     });
   });
