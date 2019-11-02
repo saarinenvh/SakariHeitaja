@@ -85,7 +85,10 @@ export async function sendWeatherMessage(city, chatId) {
   const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=fi&apikey=${process.env.OPENWEATHERMAP_APIKEY}`; // eslint-disable-line
   const response = await getData(url);
   if (response.cod === "404") {
-    bot.sendMessage(chatId, "Tommosta mestaahan ei oo kyl olemassakaa.");
+    bot.sendMessage(
+      chatId,
+      `Mikä vitun ${city}? - Eihän tommosta mestaa oo ees olemassakaa.`
+    );
   } else {
     bot.sendMessage(chatId, createWeatherMessage(response), {
       parse_mode: "HTML"

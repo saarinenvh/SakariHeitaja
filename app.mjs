@@ -10,7 +10,8 @@ Logger.useDefaults();
 import {
   sakariNames,
   sakariResponses,
-  randomQuote
+  randomQuote,
+  citys
 } from "./responses/default.mjs";
 import { players } from "./responses/game.mjs";
 import {
@@ -108,12 +109,6 @@ bot.on("text", msg => {
   let said = false;
   const chatId = msg.chat.id;
 
-  // Add chatId to DB if doesn't exists
-  if (!chats.find(n => n.id === chatId)) {
-    let test = queries.addChatIfUndefined(chatId, msg.chat.title);
-    chats = queries.fetchChats();
-  }
-
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
     if (Helpers.getRandom(3) == 1) {
       bot.sendMessage(
@@ -137,6 +132,15 @@ bot.on("text", msg => {
     bot.sendMessage(chatId, randomQuote[Helpers.getRandom(randomQuote.length)]);
   }
 });
+
+async function checkAndAddNewChat(chatId, chatName) {
+  // Add chatId to DB if doesn't exists
+  if (!chats.find(n => n.id === chatId)) {
+    await queries.addChatIfUndefined(chatId, chatName).then(n => {
+      queries.fetchChats().then(item => (chats = item));
+    });
+  }
+}
 
 // Stupid feature FIX!!
 function todaysGames() {
@@ -175,6 +179,8 @@ bot.onText(/\/follow (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const idFromUrl = match[1].split("/"); // the captured "whatever"
   const competitionId = idFromUrl[idFromUrl.length - 1];
+
+  checkAndAddNewChat(chatId, msg.chat.title);
 
   bot.sendMessage(
     chatId,
@@ -312,6 +318,16 @@ bot.onText(/\/saa (.+)/, (msg, match) => {
   }
 });
 
+bot.onText(/\/randomsaa/, (msg, match) => {
+  try {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
+    sendWeatherMessage(citys[Helpers.getRandom(citys.length)], chatId);
+  } catch (e) {
+    Logger.error(e);
+  }
+});
+
 bot.onText(/\/tulokset (.+)/, (msg, match) => {
   try {
     const chatId = msg.chat.id;
@@ -362,7 +378,7 @@ function startTimer() {
       new Date()
     )}</b> & tämmöstä keliä ois sit tänää taas luvassa.`;
     bot.sendMessage(chatId, message, { parse_mode: "html" });
-    await sendWeatherMessage("espoo", chatId);
+    await sendWeatherMessage(citys[Helpers.getRandom(citys.length)], chatId);
     bot.sendMessage(chatId, "Ja tästä päivä käyntiin!");
     await sendGifphy(
       giphySearchWords[Helpers.getRandom(giphySearchWords.length)],
@@ -376,6 +392,16 @@ function startTimer() {
 const app = express();
 app.listen(5000, "127.0.0.1", function() {
   init();
+});
+
+bot.on("message", msg => {
+  const keys = Object.keys(msg);
+  if (
+    keys.includes("new_chat_participant") ||
+    keys.includes("group_chat_created")
+  ) {
+    checkAndAddNewChat(msg.chat.id, msg.chat.title);
+  }
 });
 
 async function init() {
