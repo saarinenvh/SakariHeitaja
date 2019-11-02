@@ -22,6 +22,7 @@ export function sendGifphy(str, chatId) {
 
 // Sends message containing "Hyvä vade" text with random amount of e:s and ! marks.
 export const vade = bot.onText(/\/hyva/, (msg, match) => {
+  console.log(process.env.TOKEN); //eslint-disable-line
   let amount = Helpers.getRandom(100);
   let str = "Hyvä Vade";
   for (let i = 0; i < amount; i++) {

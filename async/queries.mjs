@@ -1,6 +1,7 @@
 import mysql from "./db.mjs";
 import Logger from "js-logger";
-Logger.useDefaults();
+import { loggerSettings } from "./logger.mjs";
+Logger.useDefaults(loggerSettings);
 
 export async function fetchPlayers() {
   let data = "";

@@ -2,9 +2,10 @@
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-dotenv.config();
 import Logger from "js-logger";
-Logger.useDefaults();
+import { loggerSettings } from "./logger.mjs";
+Logger.useDefaults(loggerSettings);
+dotenv.config();
 
 // Import all the quotes, future these will be in DB
 import {

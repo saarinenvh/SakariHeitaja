@@ -12,7 +12,8 @@ import { bot } from "../bot.mjs";
 import * as queries from "../async/queries.mjs";
 import * as Helpers from "../helpers/helpers.mjs";
 import Logger from "js-logger";
-Logger.useDefaults();
+import { loggerSettings } from "./logger.mjs";
+Logger.useDefaults(loggerSettings);
 
 class Game {
   constructor(id, metrixId, chatId, announced) {
