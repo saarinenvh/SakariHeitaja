@@ -12,7 +12,7 @@ import { bot } from "../bot.mjs";
 import * as queries from "../async/queries.mjs";
 import * as Helpers from "../helpers/helpers.mjs";
 import Logger from "js-logger";
-import { loggerSettings } from "./logger.mjs";
+import { loggerSettings } from "../logger.mjs";
 Logger.useDefaults(loggerSettings);
 
 class Game {
