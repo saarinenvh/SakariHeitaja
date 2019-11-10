@@ -22,23 +22,21 @@ export function sendGifphy(str, chatId) {
 
 // Sends message containing "Hyvä vade" text with random amount of e:s and ! marks.
 export const vade = bot.onText(/\/hyva/, (msg, match) => {
-  if (!match[1].includes("isi")) {
-    let amount = Helpers.getRandom(100);
-    let str = "Hyvä Vade";
-    for (let i = 0; i < amount; i++) {
-      str = str.concat("e");
-    }
-    amount = Helpers.getRandom(100);
-    for (let i = 0; i < amount; i++) {
-      str = str.concat("!");
-    }
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, str);
+  let amount = Helpers.getRandom(100);
+  let str = "Hyvä Vade";
+  for (let i = 0; i < amount; i++) {
+    str = str.concat("e");
   }
+  amount = Helpers.getRandom(100);
+  for (let i = 0; i < amount; i++) {
+    str = str.concat("!");
+  }
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, str);
 });
 
 //Fathers day easter egg
-export const hyva = bot.onText(/\/hyvaisit/, (msg, match) => {
+export const hyva = bot.onText(/\/isit/, (msg, match) => {
   let amount = Helpers.getRandom(100);
   let str = "Hyvä isi";
   for (let i = 0; i < amount; i++) {
