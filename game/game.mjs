@@ -72,6 +72,15 @@ class Game {
     return this;
   }
 
+  modifyCourseName(str) {
+    let name = str.replace(/&rarr;/g, "");
+    if (name.length > 38) {
+      return `${name.slice(0, 37)}...`;
+    } else {
+      return name;
+    }
+  }
+
   async startFollowing() {
     // Condition for following the contest
     if (this.following) {
@@ -101,7 +110,13 @@ class Game {
             let str = `${this.getStartText()} \n`;
             Object.keys(combinedComments).forEach(n => {
               str = str.concat(
-                `*********** Väylä numero ${parseInt(n) + 1} ***********\n\n`
+                `*********** Väylä numero ${parseInt(n) + 1} ***********\n`
+              );
+
+              str = str.concat(
+                `<i>${this.modifyCourseName(
+                  this.data.Competition.CourseName
+                )}</i>\n\n`
               );
               combinedComments[n].forEach(i => {
                 str = str.concat(`${i} \n\n`);
@@ -350,7 +365,6 @@ class Game {
   async checkAndSaveSuperbScores(player, hole) {
     let thisPlayer = this.playersToFollow.find(n => n.Name == player.Name);
     let score = player.PlayerResults[hole].Diff;
-    console.log(player);
 
     if (score <= -2) {
       const course = await queries.fetchCourse(

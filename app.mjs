@@ -66,7 +66,6 @@ bot.onText(/\/pelit/, (msg, match) => {
 
       message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
       competitionsToFollow[chatId].forEach((n, i) => {
-        console.log(n);
         message += `${n.id}: ${n.data.Competition.Name}, ${n.playersToFollow.length} sankari(a). https://discgolfmetrix.com/${n.metrixId}\n`;
       });
     } else {
@@ -178,9 +177,7 @@ bot.onText(/\/pelei/, (msg, match) => {
 // Starts following game with given id
 bot.onText(/\/follow (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
-  const idFromUrl = match[1].split("/"); // the captured "whatever"
-  const competitionId = idFromUrl[idFromUrl.length - 1];
-
+  const competitionId = match[1].match(/\d+/); // the captured "whatever"
   checkAndAddNewChat(chatId, msg.chat.title);
 
   bot.sendMessage(
@@ -343,10 +340,14 @@ bot.onText(/\/tulokset (.+)/, (msg, match) => {
           const message = `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${coursesToText}`;
           bot.sendMessage(chatId, message);
         } else {
-          const scoresToText = scores
+          scores = scores
+            .sort((a, b) => (a.diff > b.diff ? 1 : -1))
+            .splice(0, 10);
+          let scoresToText = scores
             .map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`)
-            .toString()
-            .replace(",", "");
+            .toString();
+          scoresToText = scoresToText.replace(/,/g, "");
+
           const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${scores[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${scoresToText}</code>`;
           bot.sendMessage(chatId, message, { parse_mode: "html" });
         }
