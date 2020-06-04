@@ -114,16 +114,21 @@ class Game {
               );
 
               str = str.concat(
-                `<i>${this.modifyCourseName(
+                `<i><a href="https://discgolfmetrix.com/${
+                  this.metrixId
+                }">${this.modifyCourseName(
                   this.data.Competition.CourseName
-                )}</i>\n\n`
+                )}</a></i>\n\n`
               );
               combinedComments[n].forEach(i => {
                 str = str.concat(`${i} \n\n`);
               });
             });
             if (Object.keys(combinedComments).length > 0) {
-              bot.sendMessage(this.chatId, str, { parse_mode: "HTML" });
+              bot.sendMessage(this.chatId, str, {
+                parse_mode: "HTML",
+                disable_web_page_preview: true
+              });
               Logger.info(
                 `Changes in game ${this.data.Competition.Name}, ${this.metrixId}`
               );
