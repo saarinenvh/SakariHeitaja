@@ -256,9 +256,11 @@ class Game {
     divisions.forEach(n => {
       rankings[n] = this.getTopFive(n);
     });
-    rankings["Muut Sankarit"] = this.getPlayerToFollowThatArentInTopFive(
-      rankings
-    );
+
+    const otherPlayers = this.getPlayerToFollowThatArentInTopFive(rankings);
+    if (otherPlayers.length > 0) {
+      rankings["Muut Sankarit"] = otherPlayers;
+    }
 
     let str = `${this.data.Competition.Name} TOP-5 "\n""\n"`;
     Object.keys(rankings).forEach(n => {
