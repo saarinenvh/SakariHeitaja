@@ -1,4 +1,12 @@
-export const sakariNames = ["Sakari", "Sakke"];
+export const sakariNames = [
+  "Sakari",
+  "Sakke",
+  "Sakkea",
+  "Sakelle",
+  "Sakarille",
+  "Saken",
+  "Sakarin"
+];
 export const sakariResponses = [
   "Pää kii aki!",
   "Turhaa mua syytät, salee topin vika.",
@@ -8,7 +16,12 @@ export const sakariResponses = [
   "Mitä sä mua huutelet??",
   "Huoh....",
   "Hiljaa saatana!",
-  "Eiku C-Line!"
+  "Eiku C-Line!",
+  "joojooojooo",
+  "En ymmärrä, voisitko esim. vetää käteen?",
+  "PAIKALLA!",
+  "WAT? Wiltzu sammu mua enne!",
+  "Älä häiritte, ny o **** kädessä"
 ];
 export const randomQuote = [
   "Paska puhetta...",
@@ -29,7 +42,18 @@ export const randomQuote = [
   "Nämä on ny näitä",
   "Oispa kaljaa...",
   "Eiku C-Line!!",
-  "Sattuuhan näitä..."
+  "Sattuuhan näitä...",
+  "EI HELVETIN KUUSTOISTA!",
+  "Homohintti!",
+  "Onko nyt noinkaan...",
+  "Mutsis o",
+  "No ei kyllä nyt kiinnosta vittuakaa",
+  "Ai kaks rivinen aj-dessu???",
+  "TOPII??? Mites se suihkukaappi?",
+  "Tää on kyl nyt iha yhtä paskaa Hirsimäen putti SM-kisoissa 2018 vikalla väylällä...",
+  "EZ4ENCE!!",
+  "Oiskohan aika lähtee Saluunaan ryyppää?",
+  "RÄTÄTÄTÄTÄTÄTÄTÄTÄTÄTÄÄTÄÄ"
 ];
 
 export const randomGoodMorning = [
@@ -43,7 +67,9 @@ export const randomGoodMorning = [
   "JA EIKUN UUTEEN NOUSUUN!\n",
   "Huomenta vaan juu että tota noin. \n",
   "Oisko jo pelejäpelejäpelejäpelejäpelejäpelejäpelejä????\n",
-  "JALLU! JALLU! JALLU!\n"
+  "JALLU! JALLU! JALLU!\n",
+  "I MORGON ÄR DET FRIDAG! WWHUUUUUUYEYEYEYYEE!",
+  "Joo, ei kyllä tänään pysty, takasin pullolle."
 ];
 
 export const weatherEmojis = {
@@ -64,7 +90,12 @@ export const giphySearchWords = [
   "rain",
   "erotic",
   "beer",
-  "booze"
+  "booze",
+  "alcohol",
+  "funny",
+  "lol",
+  "vodka",
+  "russian"
 ];
 
 export const citys = [

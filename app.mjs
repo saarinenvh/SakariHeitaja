@@ -110,7 +110,7 @@ bot.on("text", msg => {
   const chatId = msg.chat.id;
 
   if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
-    if (Helpers.getRandom(3) == 1) {
+    if (Helpers.getRandom(2) == 1) {
       bot.sendMessage(
         chatId,
         sakariResponses[Helpers.getRandom(sakariResponses.length)]
@@ -127,7 +127,7 @@ bot.on("text", msg => {
     bot.sendMessage(chatId, "JALLU!");
   }
 
-  const rand = Helpers.getRandom(50);
+  const rand = Helpers.getRandom(40);
   if (rand === 1 && !said) {
     bot.sendMessage(chatId, randomQuote[Helpers.getRandom(randomQuote.length)]);
   }
