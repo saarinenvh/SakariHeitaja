@@ -140,7 +140,8 @@ export const verbs = [
   "nakkeli",
   "sinkosi",
   "nosti",
-  "lapioi"
+  "lapioi",
+  "viimeisteli"
 ];
 
 export const throws = [
@@ -153,8 +154,9 @@ export const throws = [
 
 export const outofbounds = [
   ", oli muuten myös <b>OBOBOB</b>",
-  ", eikä pysyny ees väylällä",
-  ", kaiken lisäks OUT OF BOUNDS"
+  ", eikä pysyny ees väylällä <b>(ob)</b>",
+  ", kaiken lisäks <b>OUT OF BOUNDS</b>",
+  ", oli muute viel <b>OB</b> HÄHÄHÄHÄHÄ"
 ];
 
 export let players = [

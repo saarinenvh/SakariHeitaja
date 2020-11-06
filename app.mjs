@@ -71,7 +71,10 @@ bot.onText(/\/pelit/, (msg, match) => {
     } else {
       message = "Eihän tässä nyt taas mitään ole käynnissä...";
     }
-    bot.sendMessage(chatId, message);
+    bot.sendMessage(chatId, message, {
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    });
   });
 });
 

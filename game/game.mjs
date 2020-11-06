@@ -200,7 +200,7 @@ class Game {
     let bool = this.playersToFollow.map(n =>
       n.PlayerResults.every(hole => !Array.isArray(hole))
     );
-    return bool[0];
+    return bool.every(n => n === true);
   }
 
   async findPlayersToFollow() {
@@ -218,11 +218,18 @@ class Game {
 
     // Create announce messasge
     if (this.playersToFollow.length > 0 && !this.playersAnnounced) {
-      let str = "Ja tällä kertaa kisassa on mukana:\n";
+      const course = `<a href="https://discgolfmetrix.com/${
+        this.metrixId
+      }">${this.modifyCourseName(this.data.Competition.CourseName)}</a>`;
+      let str = `Peliareenana toimii ${course}\n\nJa tällä kertaa kisassa on mukana:\n`;
+
       for (let i = 0; i < this.playersToFollow.length; i++) {
         str = str.concat(`${this.playersToFollow[i].Name}\n`);
       }
-      bot.sendMessage(this.chatId, str);
+      bot.sendMessage(this.chatId, str, {
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      });
       this.playersAnnounced = true;
     }
   }
