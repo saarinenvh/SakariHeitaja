@@ -38,6 +38,7 @@ class Game {
     this.following = false;
   }
 
+  // Find if the competition has started, if it has, query every 5s, otherwise count the start time
   countNextInterval(date) {
     const now = new Date();
     now.setHours(now.getHours() + 2);
@@ -54,7 +55,7 @@ class Game {
 
   async initGameData() {
     await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
-      // Init the first data and find players to follow
+      // Init the first data and find players to follow, find if response has competitions
       if (
         !this.data &&
         Object.keys(newData).includes("Competition") &&
@@ -67,6 +68,7 @@ class Game {
         );
       }
     });
+
     setTimeout(n => {
       this.startFollowing();
     }, 5000);
@@ -130,7 +132,7 @@ class Game {
                 parse_mode: "HTML",
                 disable_web_page_preview: true
               });
-              Logger.info(
+              Logger.debug(
                 `Changes in game ${this.data.Competition.Name}, ${this.metrixId}`
               );
             }
@@ -139,7 +141,7 @@ class Game {
             this.data = this.newRound;
             this.findPlayersToFollow();
           } else {
-            Logger.info(
+            Logger.debug(
               `${this.data.Competition.Name} ${this.metrixId}: no changes`
             );
           }
@@ -254,8 +256,10 @@ class Game {
     divisions.forEach(n => {
       rankings[n] = this.getTopFive(n);
     });
+    rankings["Muut Sankarit"] = this.getPlayerToFollowThatArentInTopFive(
+      rankings
+    );
 
-    let othersToFollow = this.getPlayerToFollowThatArentInTopFive();
     let str = `${this.data.Competition.Name} TOP-5 "\n""\n"`;
     Object.keys(rankings).forEach(n => {
       str = str.concat(`Sarja ${n}"\n"`);
@@ -278,24 +282,24 @@ class Game {
     return result.sort((a, b) => (a.OrderNumber > b.OrderNumber ? 1 : -1));
   }
 
-  getPlayerToFollowThatArentInTopFive() {
+  getPlayerToFollowThatArentInTopFive(rankings) {
     let othersToFollow = [];
-    for (let i in this.playersToFollow) {
-      if (this.getTopFive().forEach(n => n.Name !== i.Name)) {
-        othersToFollow.push(i);
-      }
+    for (let i of this.playersToFollow) {
+      if (i.OrderNumber > 5) othersToFollow.push(i);
     }
+
     return othersToFollow.sort((a, b) =>
       a.OrderNumber > b.OrderNumber ? 1 : -1
     );
   }
 
-  // Helper  for checking changes
+  // Helper for checking changes
   checkChangesAndComment(playerName) {
     const prevScore = this.playersToFollow.find(n => n.Name == playerName);
     const newScore = this.newRound.Competition.Results.find(
       n => n.Name == playerName
     );
+
     if (
       Object.keys(prevScore).includes("Sum") &&
       prevScore.Sum != newScore.Sum
@@ -315,7 +319,7 @@ class Game {
 
     //If player has results
     if (datalistOld && datalistNew) {
-      // Modify the scorelist, because the metrixapi sux
+      // Modify the scorelists, because the metrixapi sux
       const holeMapOld = datalistOld.map((item, index) => {
         if (Array.isArray(item)) {
           return { Result: "", Diff: "", OB: "", Played: false, Index: index };
@@ -336,6 +340,7 @@ class Game {
         }
       });
 
+      // find which hole has changes
       for (let i = 0; i < holeMapNew.length; i++) {
         if (holeMapNew[i].Result !== holeMapOld[i].Result) {
           return i;
@@ -346,14 +351,8 @@ class Game {
     }
   }
 
-  capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-  }
-
-  checkScoreAndCreatePhrase(prevDiff, newDiff) {
-    if (this.getHole(newDiff) !== -1) {
-      this.getPhraseForScore(newDiff.Name, this.getHole(newDiff));
-    }
+  addPlusSignToScore(score) {
+    return score > 0 ? `+${score}` : `${score}`;
   }
 
   createPhrase(player) {
@@ -369,10 +368,6 @@ class Game {
         )}</b> ja sijalla <b>${player.OrderNumber}</b>`
       };
     }
-  }
-
-  addPlusSignToScore(score) {
-    return score > 0 ? `+${score}` : `${score}`;
   }
 
   async checkAndSaveSuperbScores(player, hole) {
@@ -426,6 +421,11 @@ class Game {
         }
       }
     }
+  }
+
+  getStartText() {
+    const obj = narratives[Helpers.getRandom(narratives.length)];
+    return `${obj.firstPart}\n`;
   }
 
   getPhraseForScore(player, hole) {
@@ -483,11 +483,6 @@ class Game {
         ? outofbounds[Helpers.getRandom(outofbounds.length)]
         : "";
     return obj;
-  }
-
-  getStartText() {
-    const obj = narratives[Helpers.getRandom(narratives.length)];
-    return `${obj.firstPart}\n`;
   }
 }
 

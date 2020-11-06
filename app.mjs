@@ -234,8 +234,21 @@ async function getGamers(chatId) {
 // Returns top5 list for game
 bot.onText(/\/top5/, msg => {
   const chatId = msg.chat.id;
-  if (competitionsToFollow[chatId]) {
-    competitionsToFollow[chatId].createTopList();
+  if (competitionsToFollow[chatId].length > 0) {
+    bot.sendMessage(
+      chatId,
+      "Jaa, vai että minkäs kisan top tulokset haluut? Kokeile vaik /pelit komentoo ja lisää kisan id /top5 komennon perään. Aasi!"
+    );
+  } else {
+    bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
+  }
+});
+
+// Returns top5 list for game
+bot.onText(/\/top5 (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  if (competitionsToFollow[chatId].length > 0) {
+    competitionsToFollow[chatId].find(n => n.id == match[1]).createTopList();
   } else {
     bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
   }
