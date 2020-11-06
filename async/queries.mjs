@@ -310,7 +310,23 @@ export async function addResults(
 export async function fetchScoresByCourseName(name, chatId) {
   let data = await new Promise((res, rej) => {
     mysql.query(
-      `select I.name AS player, C.name as course, S.sum, S.diff, (SELECT COUNT (DISTINCT S2.course_id) from Scores S2 JOIN Courses C2 ON S2.course_id = C2.id where S2.chat_id = ${chatId} AND C2.name LIKE '%${name}%') AS count from Scores S JOIN Players I ON S.player_id = I.id JOIN Courses C ON S.course_id = C.id WHERE chat_id = ${chatId} and C.name LIKE '%${name}%' ORDER BY S.diff`,
+      `select S.course_id AS courseId, I.name AS player, C.name as course, S.sum, S.diff, (SELECT COUNT (DISTINCT S2.course_id) from Scores S2 JOIN Courses C2 ON S2.course_id = C2.id where S2.chat_id = ${chatId} AND C2.name LIKE '%${name}%') AS count from Scores S JOIN Players I ON S.player_id = I.id JOIN Courses C ON S.course_id = C.id WHERE chat_id = ${chatId} and C.name LIKE '%${name}%' ORDER BY S.diff`,
+      function(error, results, fields) {
+        if (error) {
+          Logger.info(error);
+        } else {
+          res(results);
+        }
+      }
+    );
+  });
+  return JSON.parse(JSON.stringify(data));
+}
+
+export async function fetchScoresByCourseId(id, chatId) {
+  let data = await new Promise((res, rej) => {
+    mysql.query(
+      `select S.course_id AS courseId, I.name AS player, C.name as course, S.sum, S.diff from Scores S JOIN Courses C ON S.course_id = C.id JOIN Players I ON S.player_id = I.id where S.chat_id = ${chatId} and C.id = ${id} ORDER BY S.diff`,
       function(error, results, fields) {
         if (error) {
           Logger.info(error);

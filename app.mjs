@@ -327,39 +327,54 @@ bot.onText(/\/randomsaa/, (msg, match) => {
 });
 
 bot.onText(/\/tulokset (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const isId = isNaN(match[1]);
   try {
-    const chatId = msg.chat.id;
-    queries.fetchScoresByCourseName(match[1], chatId).then(scores => {
-      if (scores.length > 0) {
+    if (!isId) {
+      queries.fetchScoresByCourseId(match[1], chatId).then(scores => {
+        formatAndSendScores(scores, chatId);
+      });
+    } else {
+      queries.fetchScoresByCourseName(match[1], chatId).then(scores => {
+        // Check if more than one Course
         if (scores[0].count > 1) {
           const coursesToText = [
-            ...new Set(scores.map(item => `${item.course}\n`))
+            ...new Set(
+              scores.map(item => `<b>${item.courseId}</b>: ${item.course}\n`)
+            )
           ]
             .toString()
-            .replace(",", "");
-          const message = `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${coursesToText}`;
-          bot.sendMessage(chatId, message);
-        } else {
-          scores = scores
-            .sort((a, b) => (a.diff > b.diff ? 1 : -1))
-            .splice(0, 10);
-          let scoresToText = scores
-            .map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`)
-            .toString();
-          scoresToText = scoresToText.replace(/,/g, "");
+            .replace(/,/g, "");
 
-          const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${scores[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${scoresToText}</code>`;
+          //Notify User
+          const message = `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${coursesToText}`;
           bot.sendMessage(chatId, message, { parse_mode: "html" });
+        } else {
+          formatAndSendScores(scores, chatId);
         }
-      } else {
-        const message = "Eip löytyny tuloksia tolla hakusanalla :'(((";
-        bot.sendMessage(chatId, message, { parse_mode: "html" });
-      }
-    });
+      });
+    }
   } catch (e) {
     Logger.error(e);
   }
 });
+
+function formatAndSendScores(scores, chatId) {
+  if (scores.length > 0) {
+    const sortedScores = scores
+      .sort((a, b) => (a.diff > b.diff ? 1 : -1))
+      .splice(0, 10);
+    let scoresToText = sortedScores
+      .map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`)
+      .toString();
+    scoresToText = scoresToText.replace(/,/g, "");
+    const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${sortedScores[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${scoresToText}</code>`;
+    bot.sendMessage(chatId, message, { parse_mode: "html" });
+  } else {
+    const message = "Eip löytyny tuloksia tolla hakusanalla :'(((";
+    bot.sendMessage(chatId, message, { parse_mode: "html" });
+  }
+}
 
 function startTimer() {
   const chatId = -1001107508068; // SANKARIID
