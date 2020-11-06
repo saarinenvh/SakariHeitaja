@@ -6,6 +6,7 @@ import {
   badStart,
   neutralStart,
   verbs,
+  outofbounds,
   throws
 } from "../responses/game.mjs";
 import { bot } from "../bot.mjs";
@@ -356,7 +357,7 @@ class Game {
         hole: this.getHole(player.Name),
         text: `${obj.startText} <b>${player.Name}</b> ${randomVerb} ${
           obj.scoreText
-        }, tällä hetkellä tuloksessa <b>${this.addPlusSignToScore(
+        }${obj.ob}, tällä hetkellä tuloksessa <b>${this.addPlusSignToScore(
           player.Diff
         )}</b> ja sijalla <b>${player.OrderNumber}</b>`
       };
@@ -469,6 +470,11 @@ class Game {
         ]
       };
     }
+
+    obj["ob"] =
+      player.PlayerResults[hole].PEN > 0
+        ? outofbounds[Helpers.getRandom(outofbounds.length)]
+        : "";
     return obj;
   }
 

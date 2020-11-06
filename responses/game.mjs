@@ -147,7 +147,14 @@ export const throws = [
   "fisbeegolfheitolla",
   "heitolla",
   "roiskasulla",
-  "hyppyputilla"
+  "hyppyputilla",
+  "tempaisulla"
+];
+
+export const outofbounds = [
+  ", oli muuten myös <b>OBOBOB</b>",
+  ", eikä pysyny ees väylällä",
+  ", kaiken lisäks OUT OF BOUNDS"
 ];
 
 export let players = [
