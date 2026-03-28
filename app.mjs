@@ -447,10 +447,10 @@ async function init() {
   // Creates Game objects from unfinished games
   await queries.fetchUnfinishedCompetitions().then(n => {
     n.forEach(i => {
-      if (!competitionsToFollow[i.chatId]) competitionsToFollow[i.chatId] = [];
-      const game = new Game(i.id, i.metrixId, i.chatId, true);
+      if (!competitionsToFollow[i.chat_id]) competitionsToFollow[i.chat_id] = [];
+      const game = new Game(i.id, i.metrix_id, i.chat_id, true);
       game.initGameData();
-      competitionsToFollow[i.chatId].push(game);
+      competitionsToFollow[i.chat_id].push(game);
     });
   });
 }

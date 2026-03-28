@@ -53,20 +53,31 @@ class Game {
   }
 
   async initGameData() {
-    await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
-      // Init the first data and find players to follow, find if response has competitions
-      if (
-        !this.data &&
-        Object.keys(newData).includes("Competition") &&
-        newData.Competition != null
-      ) {
-        this.data = newData;
-        this.findPlayersToFollow(this.chatId);
-        Logger.info(
-          `Started following game: ${this.data.Competition.Name} with id ${this.metrixId}`
-        );
-      }
-    });
+    const newData = await getData(`${this.baseUrl}${this.metrixId}`);
+
+    if (
+      !this.data &&
+      newData &&
+      Object.keys(newData).includes("Competition") &&
+      newData.Competition != null
+    ) {
+      this.data = newData;
+      await this.findPlayersToFollow();
+      Logger.info(
+        `Started following game: ${this.data.Competition.Name} with id ${this.metrixId}`
+      );
+    }
+
+    // Stop immediately if no tracked players are in this competition
+    if (this.playersToFollow.length === 0) {
+      Logger.info(`${this.metrixId}: no tracked players found, stopping`);
+      bot.sendMessage(
+        this.chatId,
+        "Ei löydy seurattavia pelaajia tästä kisasta. Lopetan seuraamisen."
+      );
+      this.following = false;
+      return this;
+    }
 
     // Calculate how long to wait before polling starts
     const initialDelay = this.msUntilStart(this.data.Competition.Date);
