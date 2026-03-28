@@ -2,23 +2,26 @@
   "name": "commentatorbot",
   "version": "1.0.0",
   "description": "",
-  "main": "app.mjs",
-  "type": "module",
+  "main": "dist/app.js",
   "scripts": {
-    "start": "node app.mjs",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "dev": "ts-node src/app.ts",
     "lint": "eslint"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.20.3",
     "dotenv": "^16.4.5",
-    "express": "^4.22.1",
+    "grammy": "^1.41.1",
     "js-logger": "^1.6.1",
-    "mysql": "^2.18.1",
-    "node-telegram-bot-api": "^0.67.0"
+    "mysql": "^2.18.1"
   },
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "@types/mysql": "^2.15.27",
+    "@types/node": "^25.5.0",
+    "eslint": "^8.57.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
