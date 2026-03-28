@@ -1,6 +1,6 @@
 import { Composer } from "grammy";
 import { getRandom } from "../../lib/utils";
-import { getGiphy } from "../../lib/http";
+import { searchGiphy } from "../../lib/giphy";
 import { sakariNames, sakariResponses, randomQuote } from "../../config/phrases";
 import { fun as MSG } from "../../config/messages";
 
@@ -39,12 +39,8 @@ fun.command("kukakirjaa", async ctx => {
 // Searches Gfycat for a matching GIF/video and sends a random result.
 fun.command("gifplz", async ctx => {
   if (!ctx.match) return ctx.reply(MSG.gifplzUsage);
-  const url = `https://api.gfycat.com/v1/gfycats/search?search_text=${ctx.match}`;
-  const raw = await getGiphy(url);
-  if (!raw) return;
-  const response = JSON.parse(raw);
-  const images: string[] = response.gfycats.map((g: any) => g.mp4Url);
-  await ctx.replyWithVideo(images[getRandom(images.length)]);
+  const gifUrl = await searchGiphy(ctx.match);
+  if (gifUrl) await ctx.replyWithVideo(gifUrl);
 });
 
 // /hep <plan>
