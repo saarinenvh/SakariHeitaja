@@ -1,7 +1,6 @@
 import { Bot } from "grammy";
-import { Orchestrator } from "../../game/orchestrator";
-import * as competitionDb from "../../db/queries/competitions";
-import * as chatDb from "../../db/queries/chats";
+import { Orchestrator } from "../../features/disc-golf/orchestrator";
+import * as competitionService from "../../features/disc-golf/services/CompetitionService";
 import * as registry from "../../state/competitionRegistry";
 
 export function register(bot: Bot): void {
@@ -11,10 +10,9 @@ export function register(bot: Bot): void {
     if (!metrixId) return ctx.reply("Ei löydy numeroa viestistä, urpo.");
 
     const chatId = ctx.chat.id;
-    await chatDb.addChatIfUndefined(chatId, ctx.chat.title ?? "");
+    const result = await competitionService.start(chatId, ctx.chat.title ?? "", metrixId);
     await ctx.reply("Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson");
 
-    const result = await competitionDb.addCompetition(chatId, metrixId);
     const orchestrator = await new Orchestrator(result.insertId, metrixId, chatId).init();
     registry.add(chatId, orchestrator);
   });
@@ -24,7 +22,7 @@ export function register(bot: Bot): void {
     const chatId = ctx.chat.id;
     const removed = registry.remove(chatId, ctx.match.trim());
     if (removed) {
-      await competitionDb.deleteCompetition(ctx.match.trim());
+      await competitionService.remove(ctx.match.trim());
       await ctx.reply("No olihan se kivaa taas, jatketaan ens kerralla.");
     } else {
       await ctx.reply("Eihän tommost kisaa ookkaa! URPå!");

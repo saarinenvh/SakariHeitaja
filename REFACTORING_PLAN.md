@@ -26,67 +26,28 @@ The bot stays live throughout — every phase is independently shippable.
 - **Shared `query` helper** in `db/connection.ts` — no more duplication across query files
 - **`bot.catch()`** handles Telegram errors instead of `process.on("unhandledRejection")`
 
+### TypeORM + features/disc-golf structure
+- **TypeORM + mysql2** replacing raw `mysql` — zero runtime vulnerabilities
+- **9 entities** in `db/entities/` — typed schema, `synchronize: false`
+- **5 repositories** in `db/repositories/` — all user input parameterized (`?`), SQL injection eliminated
+- **Service layer** in `features/disc-golf/services/` — business logic separated from data access
+- **`features/disc-golf/`** — domain home for orchestrator, poller, changeDetector, commentary
+- **Handler ordering** — `registerFun` explicitly last; its `message:text` catch-all blocks subsequent handlers
+
 Current structure:
 ```
 src/
   app.ts
   types/metrix.ts
-  bot/bot.ts + handlers/
+  bot/bot.ts + handlers/          ← call services, registerFun last
   config/phrases.ts
-  db/connection.ts + queries/
-  game/orchestrator, poller, changeDetector, commentary
+  db/dataSource.ts + entities/ + repositories/
+  features/disc-golf/
+    orchestrator, poller, changeDetector, commentary
+    services/                     ← PlayerService, CompetitionService, ScoreService, CourseService
   lib/http, utils, weather, logger
   scheduler/morningGreeter
   state/competitionRegistry
-```
-
----
-
-## Phase 2: TypeORM
-
-Replaces raw SQL string interpolation in `db/queries/` — the main remaining security risk (SQL injection via user input in chat names, player names, course names).
-
-### Install
-
-```
-npm install typeorm mysql2 reflect-metadata
-npm uninstall mysql @types/mysql
-```
-
-Add to `tsconfig.json`:
-```json
-"experimentalDecorators": true,
-"emitDecoratorMetadata": true
-```
-
-### Entities (`src/db/entities/`)
-
-One file per table, matching current schema exactly. Use `synchronize: false` always.
-
-- `Player.ts`, `Chat.ts`, `Competition.ts`, `Course.ts`
-- `Score.ts`, `Ace.ts`, `Eagle.ts`, `Albatross.ts`, `PlayerToChat.ts`
-
-### Repositories (`src/db/repositories/`)
-
-Replace each file in `db/queries/` 1-to-1:
-
-- `PlayerRepository.ts` — `fetchPlayer`, `addPlayer`, `fetchPlayersLinkedToChat`, etc.
-- `CompetitionRepository.ts` — `fetchUnfinishedCompetitions`, `addCompetition`, `markCompetitionFinished`, etc.
-- `ChatRepository.ts` — `fetchChats`, `addChatIfUndefined`
-- `ScoreRepository.ts` — `addResults`, `fetchScoresByCourseName`, `fetchScoresByCourseId`, `addAce`, `addEagle`, `addAlbatross`
-- `CourseRepository.ts` — `fetchCourse`, `addCourse`
-
-All use TypeORM `QueryBuilder` with parameterized values — no string interpolation for user input.
-
-### `src/db/dataSource.ts`
-
-```typescript
-export const dataSource = new DataSource({
-  type: "mysql",
-  synchronize: false,
-  logging: process.env.NODE_ENV === "development",
-  entities: [__dirname + "/entities/*.js"],
-});
 ```
 
 ---

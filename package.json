@@ -15,10 +15,11 @@
     "dotenv": "^16.4.5",
     "grammy": "^1.41.1",
     "js-logger": "^1.6.1",
-    "mysql": "^2.18.1"
+    "mysql2": "^3.20.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.28"
   },
   "devDependencies": {
-    "@types/mysql": "^2.15.27",
     "@types/node": "^25.5.0",
     "eslint": "^8.57.0",
     "ts-node": "^10.9.2",

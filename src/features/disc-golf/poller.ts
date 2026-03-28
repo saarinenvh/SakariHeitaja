@@ -1,8 +1,8 @@
 import EventEmitter from "events";
-import { getData } from "../lib/http";
-import { MetrixApiResponse } from "../types/metrix";
+import { getData } from "../../lib/http";
+import { MetrixApiResponse } from "../../types/metrix";
 import Logger from "js-logger";
-import { loggerSettings } from "../lib/logger";
+import { loggerSettings } from "../../lib/logger";
 Logger.useDefaults(loggerSettings);
 
 const INTERVAL_ACTIVE  = 30_000;

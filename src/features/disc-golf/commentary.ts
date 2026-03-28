@@ -1,5 +1,5 @@
-import { getRandom } from "../lib/utils";
-import { Change, MetrixHoleResult } from "../types/metrix";
+import { getRandom } from "../../lib/utils";
+import { Change, MetrixHoleResult } from "../../types/metrix";
 
 const narratives = [
   "Ihmiset ovat suorittaneet firsbeegolf heittoja!",

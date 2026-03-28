@@ -1,15 +1,14 @@
 import { Bot } from "grammy";
-import * as playerDb from "../../db/queries/players";
+import * as playerService from "../../features/disc-golf/services/PlayerService";
 
 export function register(bot: Bot): void {
   bot.command("lisaa", async ctx => {
     if (!ctx.match) return ctx.reply("Anna pelaajan nimi. Esim: /lisaa Matti Meikäläinen");
     const chatId = ctx.chat.id;
     try {
-      await playerDb.addPlayer(ctx.match);
-      const result = await playerDb.addPlayerToChat(ctx.match, chatId);
+      const result = await playerService.addToGroup(ctx.match, chatId);
       await ctx.reply(
-        result.affectedRows > 0
+        result.added
           ? `Pelaaja ${ctx.match} lisätty seurattaviin pelaajiin.`
           : `Pelaaja ${ctx.match} on jo seurattavissa pelaajissa.`
       );
@@ -22,13 +21,10 @@ export function register(bot: Bot): void {
     if (!ctx.match) return ctx.reply("Anna pelaajan nimi. Esim: /poista Matti Meikäläinen");
     const chatId = ctx.chat.id;
     try {
-      const players = await playerDb.fetchPlayer(ctx.match);
-      if (players.length === 0) {
-        return ctx.reply(`Pelaajaa ${ctx.match} ei löytynyt järjestelmästä`);
-      }
-      const result = await playerDb.removePlayerFromChat(players, chatId);
+      const result = await playerService.removeFromGroup(ctx.match, chatId);
+      if (!result.found) return ctx.reply(`Pelaajaa ${ctx.match} ei löytynyt järjestelmästä`);
       await ctx.reply(
-        result.affectedRows > 0
+        result.removed
           ? `Pelaaja ${ctx.match} poistettu seurattavista pelaajista.`
           : `Pelaajaa ${ctx.match} ei löytynyt seurattavista pelaajista`
       );
@@ -38,7 +34,7 @@ export function register(bot: Bot): void {
   });
 
   bot.command("pelaajat", async ctx => {
-    const players = await playerDb.fetchPlayersLinkedToChat(ctx.chat.id);
+    const players = await playerService.getGroupPlayers(ctx.chat.id);
     let message = "Seuraan seuraavia pelaajia: \n";
     players.forEach(p => (message += `${p.name} \n`));
     await ctx.reply(message);

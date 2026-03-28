@@ -1,4 +1,4 @@
-import { Orchestrator } from "../game/orchestrator";
+import { Orchestrator } from "../features/disc-golf/orchestrator";
 
 const registry = new Map<number, Orchestrator[]>();
 

@@ -1,4 +1,4 @@
-import { MetrixApiResponse, MetrixHoleResult, MetrixPlayerResult, TrackedPlayer, Change, HoleEntry } from "../types/metrix";
+import { MetrixApiResponse, MetrixHoleResult, TrackedPlayer, Change, HoleEntry } from "../../types/metrix";
 
 interface NormalizedHole {
   Result: string;

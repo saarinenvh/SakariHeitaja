@@ -1,13 +1,12 @@
-import { Bot } from "grammy";
-import { bot } from "../bot/bot";
+import { bot } from "../../bot/bot";
 import Poller from "./poller";
 import { detectChanges, hasCompetitionEnded } from "./changeDetector";
 import { generateComment, generateHeader } from "./commentary";
-import * as competitionDb from "../db/queries/competitions";
-import * as courseDb from "../db/queries/courses";
-import * as scoreDb from "../db/queries/scores";
-import * as playerDb from "../db/queries/players";
-import { MetrixApiResponse, TrackedPlayer, Change } from "../types/metrix";
+import * as playerRepo from "../../db/repositories/PlayerRepository";
+import * as competitionService from "./services/CompetitionService";
+import * as courseService from "./services/CourseService";
+import * as scoreService from "./services/ScoreService";
+import { MetrixApiResponse, TrackedPlayer, Change } from "../../types/metrix";
 import Logger from "js-logger";
 
 const BASE_URL = "https://discgolfmetrix.com/api.php?content=result&id=";
@@ -31,7 +30,7 @@ export class Orchestrator {
   }
 
   async init(): Promise<this> {
-    const { getData } = await import("../lib/http");
+    const { getData } = await import("../../lib/http");
     const newData = await getData<MetrixApiResponse>(`${BASE_URL}${this.metrixId}`);
 
     if (!newData?.Competition) {
@@ -135,25 +134,7 @@ export class Orchestrator {
     Logger.debug(`Changes in ${this.data!.Competition.Name}, ${this.metrixId}`);
 
     for (const change of changes) {
-      await this._saveSuperScore(change);
-    }
-  }
-
-  private async _saveSuperScore(change: Change): Promise<void> {
-    const { holeResult, playerId } = change;
-    if (holeResult.Diff > -2) return;
-
-    const courses = await courseDb.fetchCourse(this.data!.Competition.CourseName);
-    if (!courses.length) return;
-    const courseId = courses[0].id;
-    const date = new Date().toISOString().slice(0, 10);
-
-    if (parseInt(holeResult.Result) === 1) {
-      await scoreDb.addAce(date, playerId, this.chatId, courseId, this.id);
-    } else if (holeResult.Diff === -3) {
-      await scoreDb.addAlbatross(date, playerId, this.chatId, courseId, this.id);
-    } else if (holeResult.Diff === -2) {
-      await scoreDb.addEagle(date, playerId, this.chatId, courseId, this.id);
+      await scoreService.saveSuperScore(change, this.chatId, this.id, this.data!.Competition.CourseName);
     }
   }
 
@@ -167,14 +148,11 @@ export class Orchestrator {
       bot.api.sendMessage(this.chatId, "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!");
     }, 1000);
 
-    await competitionDb.markCompetitionFinished(this.id);
-    await courseDb.addCourse(this.data!.Competition.CourseName);
+    await competitionService.markDone(this.id);
 
-    const courses = await courseDb.fetchCourse(this.data!.Competition.CourseName);
-    if (courses.length) {
-      for (const player of this.trackedPlayers) {
-        await scoreDb.addResults(player.id, this.chatId, courses[0].id, this.id, player.Diff, player.Sum ?? 0);
-      }
+    const course = await courseService.getOrCreate(this.data!.Competition.CourseName);
+    if (course) {
+      await scoreService.saveResults(this.trackedPlayers, this.chatId, course.id, this.id);
     }
 
     setTimeout(() => this._sendTopList(), 2000);
@@ -207,7 +185,7 @@ export class Orchestrator {
   }
 
   private async _refreshTrackedPlayers(): Promise<void> {
-    const chatPlayers = await playerDb.fetchPlayersLinkedToChat(this.chatId);
+    const chatPlayers = await playerRepo.findByChatId(this.chatId);
     this.trackedPlayers = this.data!.Competition.Results
       .filter(result => chatPlayers.find(p => p.name === result.Name))
       .map(result => {
