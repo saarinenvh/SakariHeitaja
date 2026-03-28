@@ -1,463 +1,88 @@
-// Node Modules
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import Logger from "js-logger";
-import { loggerSettings } from "./logger.mjs";
+import { loggerSettings } from "./lib/logger.mjs";
+
 Logger.useDefaults(loggerSettings);
 dotenv.config();
 
-// Catch unhandled Telegram API errors (e.g. bot not in chat) without crashing
 process.on("unhandledRejection", err => {
   Logger.warn(`Unhandled rejection: ${err.message}`);
 });
 
-// Import all the quotes, future these will be in DB
-import {
-  sakariNames,
-  sakariResponses,
-  randomQuote,
-  citys
-} from "./responses/default.mjs";
-import { players } from "./responses/game.mjs";
-import {
-  weatherEmojis,
-  randomGoodMorning,
-  giphySearchWords
-} from "./responses/default.mjs";
+import { bot } from "./bot/bot.mjs";
+import * as registry from "./state/competitionRegistry.mjs";
+import { Orchestrator } from "./game/orchestrator.mjs";
+import * as competitionDb from "./db/queries/competitions.mjs";
+import * as chatDb from "./db/queries/chats.mjs";
+import * as scoreDb from "./db/queries/scores.mjs";
+import { startMorningGreeter } from "./scheduler/morningGreeter.mjs";
 
-// Custom Modules & Functions
-import * as Helpers from "./helpers/helpers.mjs";
-import HandicappedScores from "./handicap/calc.mjs";
-import Game from "./game/game.mjs";
-import { getData, getGiphy } from "./async/functions.mjs";
-import { bot } from "./bot.mjs";
-import {
-  gifplz,
-  sendGifphy,
-  vade,
-  kukakirjaa,
-  helpText,
-  sendWeatherMessage,
-  createAndSendRecipeMessage
-} from "./stupidfeatures/collection.mjs";
-import * as queries from "./async/queries.mjs";
+import { register as registerCompetition } from "./bot/handlers/competition.mjs";
+import { register as registerPlayers } from "./bot/handlers/players.mjs";
+import { register as registerWeather } from "./bot/handlers/weather.mjs";
+import { register as registerRecipe } from "./bot/handlers/recipe.mjs";
+import { register as registerFun } from "./bot/handlers/fun.mjs";
 
-let competitionsToFollow = {};
-let games = {};
-let date = new Date().toLocaleDateString();
-let chats = [];
+registerCompetition(bot);
+registerPlayers(bot);
+registerWeather(bot);
+registerRecipe(bot);
+registerFun(bot);
 
-bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
-  createAndSendRecipeMessage(msg.chat.id);
-});
-
-bot.onText(/\/pelit/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const active = (competitionsToFollow[chatId] || []).filter(n => n.following);
-  competitionsToFollow[chatId] = active;
-
-  let message = "";
-  if (active.length > 0) {
-    message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
-    active.forEach(n => {
-      message += `${n.id}: ${n.data.Competition.Name}, ${n.playersToFollow.length} sankari(a). https://discgolfmetrix.com/${n.metrixId}\n`;
-    });
-  } else {
-    message = "Eihän tässä nyt taas mitään ole käynnissä...";
-  }
-  bot.sendMessage(chatId, message, {
-    parse_mode: "HTML",
-    disable_web_page_preview: true
-  });
-});
-
-bot.onText(/\/tasoitus (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  let text = undefined;
-  switch (match[1]) {
-    case "Kaatis":
-      text = HandicappedScores.getHandicappedResults("kaatis", chatId);
-      break;
-    case "Kisis":
-      text = HandicappedScores.getHandicappedResults("kisis", chatId);
-      break;
-    case "Karkkila":
-      text = HandicappedScores.getHandicappedResults("karkkila", chatId);
-      break;
-    case "overall":
-      text = HandicappedScores.getHandicappedResults("overall", chatId);
-      break;
-    case "hamis":
-      text = HandicappedScores.getHandicappedResults("hamis", chatId);
-      break;
-    case "all":
-      text = HandicappedScores.getHandicappedResults("all", chatId);
-      break;
-    default:
-      break;
-  }
-
-  bot.sendMessage(chatId, text ? text : "häh?", { parse_mode: "HTML" });
-});
-
-// Listens the channel, small probability to answer something random
-bot.on("text", msg => {
-  let said = false;
-  const chatId = msg.chat.id;
-
-  if (sakariNames.find(n => msg.text.toLowerCase().includes(n.toLowerCase()))) {
-    if (Helpers.getRandom(2) == 1) {
-      bot.sendMessage(
-        chatId,
-        sakariResponses[Helpers.getRandom(sakariResponses.length)]
-      );
-      said = true;
-    }
-  }
-
-  if (
-    msg.text.toLowerCase().includes("jallu") &&
-    Helpers.getRandom(2) === 1 &&
-    !said
-  ) {
-    bot.sendMessage(chatId, "JALLU!");
-  }
-
-  const rand = Helpers.getRandom(40);
-  if (rand === 1 && !said) {
-    bot.sendMessage(chatId, randomQuote[Helpers.getRandom(randomQuote.length)]);
-  }
-});
-
-async function checkAndAddNewChat(chatId, chatName) {
-  // Add chatId to DB if doesn't exists
-  if (!chats.find(n => n.id === chatId)) {
-    await queries.addChatIfUndefined(chatId, chatName).then(n => {
-      queries.fetchChats().then(item => (chats = item));
-    });
-  }
-}
-
-// Stupid feature FIX!!
-function todaysGames() {
-  if (new Date().toLocaleDateString() !== date) {
-    games = {};
-  }
-  let str = "";
-  if (Object.keys(games).length > 0) {
-    str = "Tän päivän gamepläännis ois seuraavanlaisia \n";
-    for (const key in games) {
-      str = str.concat(`${key}: ${games[key]} \n`);
-    }
-    str = str.concat("Supereit heittoi kaikille!!");
-  } else {
-    str = `Kukaan ei oo pelaamas tänään??? :'(`;
-  }
-
-  return str;
-}
-
-// Stupid feature FIX!!
-bot.onText(/\/hep (.+)/, (msg, match) => {
-  date = new Date().toLocaleDateString();
-  const chatId = msg.chat.id;
-  games[msg.from.username] = match[1];
-  bot.sendMessage(chatId, todaysGames());
-});
-
-bot.onText(/\/pelei/, (msg, match) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, todaysGames());
-});
-
-// Starts following game with given id
-bot.onText(/\/follow (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const competitionId = match[1].match(/\d+/); // the captured "whatever"
-  checkAndAddNewChat(chatId, msg.chat.title);
-
-  bot.sendMessage(
-    chatId,
-    "Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson"
-  );
-  if (!competitionsToFollow[chatId]) competitionsToFollow[chatId] = [];
-
-  queries.addCompetition(chatId, competitionId).then(n => {
-    const game = new Game(n.insertId, competitionId, chatId)
-      .initGameData()
-      .then(n => {
-        competitionsToFollow[chatId].push(n);
-      });
-  });
-});
-
-// Stops following game
-bot.onText(/\/lopeta (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const competitionId = match[1];
-  if (
-    competitionsToFollow[chatId].find(n => n.id === parseInt(competitionId))
-  ) {
-    const i = competitionsToFollow[chatId].findIndex(
-      n => n.id === parseInt(competitionId)
-    );
-    competitionsToFollow[chatId][i].stopFollowing();
-    competitionsToFollow[chatId].splice(i, 1);
-    const test = queries.deleteCompetition(competitionId, chatId);
-    bot.sendMessage(chatId, "No olihan se kivaa taas, jatketaan ens kerralla.");
-  } else {
-    bot.sendMessage(chatId, "Eihän tommost kisaa ookkaa! URPå!");
-  }
-});
-
-bot.onText(/\/pelaajat/, msg => {
-  const chatId = msg.chat.id;
-  getGamers(chatId);
-});
-
-async function getGamers(chatId) {
-  const players = await queries
-    .fetchPlayersLinkedToChat(chatId)
-    .then(n => n.map(n => n.name));
-  let message = `Seuraan seuraavia pelaajia: \n`;
-  players.forEach(n => (message += `${n} \n`));
-  bot.sendMessage(chatId, message);
-}
-
-// Returns top5 list for game
-bot.onText(/\/top5/, msg => {
-  const chatId = msg.chat.id;
-  if (competitionsToFollow[chatId].length > 0) {
-    bot.sendMessage(
-      chatId,
-      "Jaa, vai että minkäs kisan top tulokset haluut? Kokeile vaik /pelit komentoo ja lisää kisan id /top5 komennon perään. Aasi!"
-    );
-  } else {
-    bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
-  }
-});
-
-// Returns top5 list for game
-bot.onText(/\/top5 (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  if (competitionsToFollow[chatId].length > 0) {
-    competitionsToFollow[chatId].find(n => n.id == match[1]).createTopList();
-  } else {
-    bot.sendMessage(chatId, "Varmaa pitäis jotai kisaa seuratakki.");
-  }
-});
-
-// BROKEN FIX!!
-bot.onText(/\/score (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  let message = "";
-
-  if (Object.keys(competitionsToFollow).includes(chatId)) {
-    const player = competitionsToFollow[chatId].data
-      ? competitionsToFollow[chatId].getScoreByPlayerName(match[1])
-      : null;
-    message =
-      player != null
-        ? `${player.Name} on tuloksessa ${player.Diff} ja sijalla ${player.OrderNumber}! Hienosti`
-        : "Eihän tommone äijä oo ees jäällä, urpo";
-  }
-
-  bot.sendMessage(chatId, message);
-});
-
-// Adds a player to the list for following players
-bot.onText(/\/lisaa (.+)/, (msg, match) => {
-  try {
-    const chatId = msg.chat.id;
-    queries.addPlayer(match[1], chatId);
-    queries.addPlayerToPlayerToChat(match[1], chatId).then(i => {
-      i.affectedRows > 0
-        ? bot.sendMessage(
-            chatId,
-            `Pelaaja ${match[1]} lisätty seurattaviin pelaajiin.`
-          )
-        : bot.sendMessage(
-            chatId,
-            `Pelaaja ${match[1]} on jo seurattavissa pelaajissa.`
-          );
-    });
-  } catch (e) {
-    Logger.error(e);
-  }
-});
-
-// Removes player from the list for following players
-bot.onText(/\/poista (.+)/, (msg, match) => {
-  try {
-    const chatId = msg.chat.id;
-    let player = queries.fetchPlayer(match[1]).then(n => {
-      if (n.length > 0) {
-        queries.deletePlayerFromPlayerToChat(n, chatId).then(i => {
-          i.affectedRows > 0
-            ? bot.sendMessage(
-                chatId,
-                `Pelaaja ${match[1]} poistettu seurattavista pelaajista.`
-              )
-            : bot.sendMessage(
-                chatId,
-                `Pelaajaa ${match[1]} ei löytynyt seurattavista pelaajista`
-              );
-        });
-      } else {
-        bot.sendMessage(
-          chatId,
-          `Pelaajaa ${match[1]} ei löytynyt järjestelmästä`
-        );
-      }
-    });
-  } catch (e) {
-    Logger.error(e);
-  }
-});
-
-bot.onText(/\/saa (.+)/, (msg, match) => {
-  try {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
-    sendWeatherMessage(match[1], chatId);
-  } catch (e) {
-    Logger.error(e);
-  }
-});
-
-bot.onText(/\/randomsaa/, (msg, match) => {
-  try {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "Oiskohan nyt hyvä hetki puhua säästä?");
-    sendWeatherMessage(citys[Helpers.getRandom(citys.length)], chatId);
-  } catch (e) {
-    Logger.error(e);
-  }
-});
+// ── Score history ─────────────────────────────────────────────────────────────
 
 bot.onText(/\/tulokset (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
-  const isId = isNaN(match[1]);
-  try {
-    if (!isId) {
-      queries.fetchScoresByCourseId(match[1], chatId).then(scores => {
-        formatAndSendScores(scores, chatId);
-      });
-    } else {
-      queries.fetchScoresByCourseName(match[1], chatId).then(scores => {
-        // Check if more than one Course
-        if (scores[0].count > 1) {
-          const coursesToText = [
-            ...new Set(
-              scores.map(item => `<b>${item.courseId}</b>: ${item.course}\n`)
-            )
-          ]
-            .toString()
-            .replace(/,/g, "");
-
-          //Notify User
-          const message = `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${coursesToText}`;
-          bot.sendMessage(chatId, message, { parse_mode: "html" });
-        } else {
-          formatAndSendScores(scores, chatId);
-        }
-      });
-    }
-  } catch (e) {
-    Logger.error(e);
+  const param = match[1];
+  if (!isNaN(param)) {
+    scoreDb.fetchScoresByCourseId(param, chatId).then(scores => _sendScores(scores, chatId));
+  } else {
+    scoreDb.fetchScoresByCourseName(param, chatId).then(scores => {
+      if (scores[0]?.count > 1) {
+        const list = [...new Set(scores.map(s => `<b>${s.courseId}</b>: ${s.course}\n`))].join("");
+        bot.sendMessage(chatId, `Voisitko vittu ystävällisesti vähän tarkemmin ilmottaa, et mitä kenttää tarkotat.. Saatana.\n\nValitse esim näistä:\n${list}`, { parse_mode: "HTML" });
+      } else {
+        _sendScores(scores, chatId);
+      }
+    });
   }
 });
 
-function formatAndSendScores(scores, chatId) {
-  if (scores.length > 0) {
-    const sortedScores = scores
-      .sort((a, b) => (a.diff > b.diff ? 1 : -1))
-      .splice(0, 10);
-    let scoresToText = sortedScores
-      .map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`)
-      .toString();
-    scoresToText = scoresToText.replace(/,/g, "");
-    const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${sortedScores[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${scoresToText}</code>`;
-    bot.sendMessage(chatId, message, { parse_mode: "html" });
-  } else {
-    const message = "Eip löytyny tuloksia tolla hakusanalla :'(((";
-    bot.sendMessage(chatId, message, { parse_mode: "html" });
-  }
-}
-
-function startTimer() {
-  const chatId = process.env.MORNING_CHAT_ID;
-  if (!chatId) {
-    Logger.info("MORNING_CHAT_ID not set, skipping morning greeting");
+function _sendScores(scores, chatId) {
+  if (scores.length === 0) {
+    bot.sendMessage(chatId, "Eip löytyny tuloksia tolla hakusanalla :'(((", { parse_mode: "HTML" });
     return;
   }
-  let now = new Date();
-  let millisTill09 =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0) -
-    now;
-  if (millisTill09 < 0) {
-    millisTill09 += 86400000; // it's after 10am, try 10am tomorrow.
-  }
-
-  Logger.info(`MS to next morning ${millisTill09}`);
-  setTimeout(async function() {
-    let message = `${
-      randomGoodMorning[Helpers.getRandom(randomGoodMorning.length)]
-    }Kello on <b>${Helpers.formatDate(
-      new Date()
-    )}</b> & tämmöstä keliä ois sit tänää taas luvassa.`;
-    bot.sendMessage(chatId, message, { parse_mode: "html" });
-    await sendWeatherMessage(citys[Helpers.getRandom(citys.length)], chatId);
-    bot.sendMessage(chatId, "Ja tästä päivä käyntiin!");
-    await sendGifphy(
-      giphySearchWords[Helpers.getRandom(giphySearchWords.length)],
-      chatId
-    );
-    startTimer();
-  }, millisTill09);
+  const top = scores.sort((a, b) => a.diff - b.diff).slice(0, 10);
+  const rows = top.map((n, i) => `${i + 1}\t\t\t\t${n.player}\t\t\t\t${n.diff}\n`).join("");
+  const message = `Dodiin, kovimmista kovimmat on sit paukutellu tällästä menee, semi säälittävää mutta... Ei tässä muuta vois odottaakkaan.\n\n********\t\t${top[0].course}\t\t********\n\n<code>Sija\tNimi\t\t\t\t\t\t\t\t\t\t\t\t\tTulos\n${rows}</code>`;
+  bot.sendMessage(chatId, message, { parse_mode: "HTML" });
 }
 
-// START SERVER
-const app = express();
-app.listen(5000, "127.0.0.1", function() {
-  init();
-});
+// ── New chat handling ─────────────────────────────────────────────────────────
 
 bot.on("message", msg => {
   const keys = Object.keys(msg);
-  if (
-    keys.includes("new_chat_participant") ||
-    keys.includes("group_chat_created")
-  ) {
-    checkAndAddNewChat(msg.chat.id, msg.chat.title);
+  if (keys.includes("new_chat_participant") || keys.includes("group_chat_created")) {
+    chatDb.addChatIfUndefined(msg.chat.id, msg.chat.title);
   }
 });
 
+// ── Startup ───────────────────────────────────────────────────────────────────
+
 async function init() {
-  // Handles good morning message
-  startTimer();
+  startMorningGreeter(bot);
 
-  // Counts scores for Sankaritour handicapped results
-  HandicappedScores.countScores();
-
-  // Fetches all the chats that are in the db, when message comes from new chat, it will be added to db
-  chats = await queries.fetchChats();
-
-  // Creates Game objects from unfinished games
-  await queries.fetchUnfinishedCompetitions().then(n => {
-    n.forEach(i => {
-      if (!competitionsToFollow[i.chat_id]) competitionsToFollow[i.chat_id] = [];
-      const game = new Game(i.id, i.metrix_id, i.chat_id, true);
-      game.initGameData();
-      competitionsToFollow[i.chat_id].push(game);
-    });
-  });
+  const unfinished = await competitionDb.fetchUnfinishedCompetitions();
+  for (const i of unfinished) {
+    const orchestrator = await new Orchestrator(i.id, i.metrix_id, i.chat_id, true).init();
+    registry.add(i.chat_id, orchestrator);
+  }
 }
 
+const app = express();
 app.use(bodyParser.json());
-app.use(
-  bodyParser.urlencoded({
-    extended: true
-  })
-);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.listen(5000, "127.0.0.1", () => init());

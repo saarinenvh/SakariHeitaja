@@ -1,7 +1,7 @@
 import EventEmitter from "events";
-import { getData } from "../async/functions.mjs";
+import { getData } from "../lib/http.mjs";
 import Logger from "js-logger";
-import { loggerSettings } from "../logger.mjs";
+import { loggerSettings } from "../lib/logger.mjs";
 Logger.useDefaults(loggerSettings);
 
 // Adaptive poll intervals
