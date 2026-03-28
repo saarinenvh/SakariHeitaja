@@ -1,78 +1,87 @@
-import { Bot } from "grammy";
+import { Composer } from "grammy";
 import { Orchestrator } from "../../features/disc-golf/orchestrator";
 import * as competitionService from "../../features/disc-golf/services/CompetitionService";
 import * as registry from "../../state/competitionRegistry";
+import { competition as MSG } from "../../config/messages";
+import { HTML_NO_PREVIEW } from "../../config/bot";
 
-export function register(bot: Bot): void {
-  bot.command("follow", async ctx => {
-    if (!ctx.match) return ctx.reply("Anna metrixId komennon perään. Esim: /follow 12345");
-    const metrixId = ctx.match.match(/\d+/)?.[0];
-    if (!metrixId) return ctx.reply("Ei löydy numeroa viestistä, urpo.");
+export const competition = new Composer();
 
-    const chatId = ctx.chat.id;
-    const result = await competitionService.start(chatId, ctx.chat.title ?? "", metrixId);
-    await ctx.reply("Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson");
+// /follow <metrixId>
+// Starts tracking a disc golf competition from Disc Golf Metrix.
+// Saves the competition to the database, creates an Orchestrator that polls
+// for score updates, and announces tracked players in the chat.
+competition.command("follow", async ctx => {
+  if (!ctx.match) return ctx.reply(MSG.followUsage);
 
-    const orchestrator = await new Orchestrator(result.insertId, metrixId, chatId).init();
-    registry.add(chatId, orchestrator);
-  });
+  const metrixId = ctx.match.match(/\d+/)?.[0];
+  if (!metrixId) return ctx.reply(MSG.followNoNumber);
 
-  bot.command("lopeta", async ctx => {
-    if (!ctx.match) return ctx.reply("Anna kisan id. Esim: /lopeta 42");
-    const chatId = ctx.chat.id;
-    const removed = registry.remove(chatId, ctx.match.trim());
-    if (removed) {
-      await competitionService.remove(ctx.match.trim());
-      await ctx.reply("No olihan se kivaa taas, jatketaan ens kerralla.");
-    } else {
-      await ctx.reply("Eihän tommost kisaa ookkaa! URPå!");
-    }
-  });
+  const chatId = ctx.chat.id;
+  const result = await competitionService.start(chatId, ctx.chat.title ?? "", metrixId);
+  await ctx.reply(MSG.followStarted);
 
-  bot.command("pelit", async ctx => {
-    const chatId = ctx.chat.id;
-    const active = registry.getActive(chatId);
+  const orchestrator = await new Orchestrator(result.insertId, metrixId, chatId).init();
+  registry.add(chatId, orchestrator);
+});
 
-    let message: string;
-    if (active.length > 0) {
-      message = "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
-      for (const o of active) {
-        message += `${o.id}: ${o.data!.Competition.Name}, ${o.trackedPlayers.length} sankari(a). https://discgolfmetrix.com/${o.metrixId}\n`;
-      }
-    } else {
-      message = "Eihän tässä nyt taas mitään ole käynnissä...";
-    }
-    await ctx.reply(message, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
-  });
+// /lopeta <metrixId>
+// Stops following a competition. Removes the Orchestrator from the registry
+// and marks the competition as finished in the database.
+competition.command("lopeta", async ctx => {
+  if (!ctx.match) return ctx.reply(MSG.lopetaUsage);
 
-  bot.command("top5", async ctx => {
-    const chatId = ctx.chat.id;
-    const active = registry.getActive(chatId);
-    if (!ctx.match) {
-      await ctx.reply(
-        active.length > 0
-          ? "Jaa, vai että minkäs kisan top tulokset haluut? Kokeile vaik /pelit komentoo ja lisää kisan id /top5 komennon perään. Aasi!"
-          : "Varmaa pitäis jotai kisaa seuratakki."
-      );
-      return;
-    }
-    const orchestrator = registry.find(chatId, ctx.match.trim());
-    orchestrator
-      ? orchestrator.createTopList()
-      : await ctx.reply("Varmaa pitäis jotai kisaa seuratakki.");
-  });
+  const chatId = ctx.chat.id;
+  const removed = registry.remove(chatId, ctx.match.trim());
 
-  bot.command("score", async ctx => {
-    const chatId = ctx.chat.id;
-    const active = registry.getActive(chatId);
-    const player = ctx.match && active.length > 0
-      ? active[0].getScoreByPlayerName(ctx.match.trim())
-      : null;
+  await ctx.reply(removed ? MSG.lopetaOk : MSG.lopetaNotFound);
+  if (removed) await competitionService.remove(ctx.match.trim());
+});
 
-    await ctx.reply(
-      player
-        ? `${player.Name} on tuloksessa ${player.Diff} ja sijalla ${player.OrderNumber}! Hienosti`
-        : "Eihän tommone äijä oo ees jäällä, urpo"
-    );
-  });
-}
+// /pelit
+// Lists all currently active (followed) competitions in this chat,
+// including the number of tracked players and a link to Disc Golf Metrix.
+competition.command("pelit", async ctx => {
+  const chatId = ctx.chat.id;
+  const active = registry.getActive(chatId);
+
+  let message = active.length > 0 ? MSG.pelitHeader : MSG.pelitNone;
+  for (const orchestrator of active) {
+    message += `${orchestrator.id}: ${orchestrator.snapshot!.Competition.Name}, ${orchestrator.trackedPlayers.length} sankari(a). https://discgolfmetrix.com/${orchestrator.metrixId}\n`;
+  }
+  await ctx.reply(message, HTML_NO_PREVIEW);
+});
+
+// /top5 <metrixId>
+// Shows the top 5 players per division for the given competition,
+// plus any tracked players ranked outside the top 5 ("Muut Sankarit").
+competition.command("top5", async ctx => {
+  const chatId = ctx.chat.id;
+  const active = registry.getActive(chatId);
+
+  if (!ctx.match) {
+    await ctx.reply(active.length > 0 ? MSG.top5Usage : MSG.top5NoneActive);
+    return;
+  }
+
+  const orchestrator = registry.find(chatId, ctx.match.trim());
+  orchestrator
+    ? orchestrator.sendTopList()
+    : await ctx.reply(MSG.top5NoneActive);
+});
+
+// /score <player name>
+// Looks up the current score and standings position for a specific player
+// in the first active competition being followed in this chat.
+competition.command("score", async ctx => {
+  const active = registry.getActive(ctx.chat.id);
+  const player = ctx.match && active.length > 0
+    ? active[0].getScoreByPlayerName(ctx.match.trim())
+    : null;
+
+  await ctx.reply(
+    player
+      ? MSG.scoreFound(player.Name, player.Diff, player.OrderNumber)
+      : MSG.scoreNotFound
+  );
+});

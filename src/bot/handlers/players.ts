@@ -1,42 +1,44 @@
-import { Bot } from "grammy";
+import { Composer } from "grammy";
 import * as playerService from "../../features/disc-golf/services/PlayerService";
+import { players as MSG } from "../../config/messages";
 
-export function register(bot: Bot): void {
-  bot.command("lisaa", async ctx => {
-    if (!ctx.match) return ctx.reply("Anna pelaajan nimi. Esim: /lisaa Matti Meikäläinen");
-    const chatId = ctx.chat.id;
-    try {
-      const result = await playerService.addToGroup(ctx.match, chatId);
-      await ctx.reply(
-        result.added
-          ? `Pelaaja ${ctx.match} lisätty seurattaviin pelaajiin.`
-          : `Pelaaja ${ctx.match} on jo seurattavissa pelaajissa.`
-      );
-    } catch {
-      await ctx.reply("Jotain meni pieleen pelaajan lisäämisessä.");
-    }
-  });
+export const players = new Composer();
 
-  bot.command("poista", async ctx => {
-    if (!ctx.match) return ctx.reply("Anna pelaajan nimi. Esim: /poista Matti Meikäläinen");
-    const chatId = ctx.chat.id;
-    try {
-      const result = await playerService.removeFromGroup(ctx.match, chatId);
-      if (!result.found) return ctx.reply(`Pelaajaa ${ctx.match} ei löytynyt järjestelmästä`);
-      await ctx.reply(
-        result.removed
-          ? `Pelaaja ${ctx.match} poistettu seurattavista pelaajista.`
-          : `Pelaajaa ${ctx.match} ei löytynyt seurattavista pelaajista`
-      );
-    } catch {
-      await ctx.reply("Jotain meni pieleen pelaajan poistamisessa.");
-    }
-  });
+// /lisaa <player name>
+// Adds a player to the tracked player list for this chat.
+// If the player doesn't exist in the database yet, they are created automatically.
+// Replies with a confirmation or a notice if the player is already being tracked.
+players.command("lisaa", async ctx => {
+  if (!ctx.match) return ctx.reply(MSG.lisaaUsage);
+  const chatId = ctx.chat.id;
+  try {
+    const result = await playerService.addToGroup(ctx.match, chatId);
+    await ctx.reply(result.added ? MSG.playerAdded(ctx.match) : MSG.playerAlreadyAdded(ctx.match));
+  } catch {
+    await ctx.reply(MSG.lisaaError);
+  }
+});
 
-  bot.command("pelaajat", async ctx => {
-    const players = await playerService.getGroupPlayers(ctx.chat.id);
-    let message = "Seuraan seuraavia pelaajia: \n";
-    players.forEach(p => (message += `${p.name} \n`));
-    await ctx.reply(message);
-  });
-}
+// /poista <player name>
+// Removes a player from the tracked player list for this chat.
+// The player record itself is kept in the database; only the chat link is removed.
+players.command("poista", async ctx => {
+  if (!ctx.match) return ctx.reply(MSG.poistaUsage);
+  const chatId = ctx.chat.id;
+  try {
+    const result = await playerService.removeFromGroup(ctx.match, chatId);
+    if (!result.found) return ctx.reply(MSG.playerNotInSystem(ctx.match));
+    await ctx.reply(result.removed ? MSG.playerRemoved(ctx.match) : MSG.playerNotTracked(ctx.match));
+  } catch {
+    await ctx.reply(MSG.poistaError);
+  }
+});
+
+// /pelaajat
+// Lists all players currently tracked in this chat.
+players.command("pelaajat", async ctx => {
+  const list = await playerService.getGroupPlayers(ctx.chat.id);
+  let message = MSG.pelaajatHeader;
+  list.forEach(p => (message += `${p.name} \n`));
+  await ctx.reply(message);
+});

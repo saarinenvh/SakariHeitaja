@@ -1,5 +1,5 @@
 import { getRandom } from "../../lib/utils";
-import { Change, MetrixHoleResult } from "../../types/metrix";
+import { Change, MetrixHoleResult, MetrixPlayerResult, TrackedPlayer } from "../../types/metrix";
 
 const narratives = [
   "Ihmiset ovat suorittaneet firsbeegolf heittoja!",
@@ -119,10 +119,10 @@ export function generateComment(change: Change): string {
   const startText = getStartText(type);
   const scoreText = getScoreText(type, holeResult);
   const verb      = pick(verbs);
-  const ob        = holeResult.PEN > 0 ? pick(obPhrases) : "";
+  const obPhrase  = holeResult.PEN > 0 ? pick(obPhrases) : "";
 
   return (
-    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${ob}, ` +
+    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${obPhrase}, ` +
     `tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ` +
     `ja sijalla <b>${newPlayer.OrderNumber}</b>`
   );
@@ -130,4 +130,53 @@ export function generateComment(change: Change): string {
 
 export function generateHeader(): string {
   return pick(narratives);
+}
+
+export function truncateCourseName(rawName: string): string {
+  const name = rawName.replace(/&rarr;/g, "");
+  return name.length > 38 ? `${name.slice(0, 37)}...` : name;
+}
+
+export function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string): string {
+  const byHole: Record<number, string[]> = {};
+  for (const change of changes) {
+    if (!byHole[change.hole]) byHole[change.hole] = [];
+    byHole[change.hole].push(generateComment(change));
+  }
+
+  const courseLink = `<i><a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a></i>`;
+
+  let message = `${generateHeader()}\n`;
+  for (const hole of Object.keys(byHole)) {
+    message += `\n*********** Väylä numero ${parseInt(hole) + 1} ***********\n`;
+    message += `${courseLink}\n\n`;
+    for (const line of byHole[parseInt(hole)]) {
+      message += `${line} \n\n`;
+    }
+  }
+  return message;
+}
+
+export function formatTopList(competitionName: string, results: MetrixPlayerResult[], trackedPlayers: TrackedPlayer[]): string {
+  const divisions = [...new Set(results.map(r => r.ClassName))];
+  const rankings: Record<string, MetrixPlayerResult[]> = {};
+
+  for (const division of divisions) {
+    rankings[division] = results
+      .filter(r => r.ClassName === division && r.OrderNumber <= 5)
+      .sort((a, b) => a.OrderNumber - b.OrderNumber);
+  }
+
+  const outsideTopFive = trackedPlayers.filter(player => player.OrderNumber > 5);
+  if (outsideTopFive.length) {
+    rankings["Muut Sankarit"] = [...outsideTopFive].sort((a, b) => a.OrderNumber - b.OrderNumber);
+  }
+
+  let message = `${competitionName} TOP-5\n\n`;
+  for (const [division, players] of Object.entries(rankings)) {
+    message += `Sarja ${division}\n`;
+    for (const player of players) message += `${player.OrderNumber}. ${player.Name}\t\t\t\t${player.Diff}\n`;
+    message += "\n";
+  }
+  return message;
 }

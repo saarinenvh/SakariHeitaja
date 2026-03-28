@@ -1,7 +1,9 @@
-import { Bot } from "grammy";
+import { Api } from "grammy";
 import { getData } from "./http";
 import { weatherEmojis } from "../config/phrases";
 import { createDate } from "./utils";
+import { weather as MSG } from "../config/messages";
+import { HTML_OPTIONS } from "../config/bot";
 
 interface WeatherResponse {
   cod: string | number;
@@ -12,14 +14,14 @@ interface WeatherResponse {
   sys: { sunrise: number; sunset: number };
 }
 
-export async function sendWeatherMessage(city: string, chatId: number, bot: Bot): Promise<void> {
+export async function sendWeatherMessage(city: string, chatId: number, api: Api): Promise<void> {
   const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=fi&apikey=${process.env.OPENWEATHERMAP_APIKEY}`;
   const response = await getData<WeatherResponse>(url);
   if (!response || response.cod === "404") {
-    await bot.api.sendMessage(chatId, `Mikä vitun ${city}? - Eihän tommosta mestaa oo ees olemassakaa.`);
+    await api.sendMessage(chatId, MSG.notFound(city));
     return;
   }
-  await bot.api.sendMessage(chatId, _formatWeather(response), { parse_mode: "HTML" });
+  await api.sendMessage(chatId, _formatWeather(response), HTML_OPTIONS);
 }
 
 function _formatWeather(data: WeatherResponse): string {

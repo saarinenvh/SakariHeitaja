@@ -33,8 +33,8 @@ export function detectChanges(
   const changes: Change[] = [];
 
   for (const tracked of trackedPlayers) {
-    const prevPlayer = prevData.Competition.Results.find(n => n.Name === tracked.Name);
-    const newPlayer = newData.Competition.Results.find(n => n.Name === tracked.Name);
+    const prevPlayer = prevData.Competition.Results.find(r => r.Name === tracked.Name);
+    const newPlayer = newData.Competition.Results.find(r => r.Name === tracked.Name);
 
     if (!prevPlayer || !newPlayer) continue;
     if (!("Sum" in prevPlayer)) continue;
@@ -65,8 +65,8 @@ export function detectChanges(
 
 export function hasCompetitionEnded(trackedPlayers: TrackedPlayer[]): boolean {
   if (trackedPlayers.length === 0) return false;
-  return trackedPlayers.every(n => {
-    if (!n.PlayerResults || n.PlayerResults.length === 0) return false;
-    return n.PlayerResults.every(hole => !Array.isArray(hole));
+  return trackedPlayers.every(player => {
+    if (!player.PlayerResults || player.PlayerResults.length === 0) return false;
+    return player.PlayerResults.every(hole => !Array.isArray(hole));
   });
 }

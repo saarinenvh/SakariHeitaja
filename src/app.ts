@@ -14,19 +14,19 @@ import * as competitionService from "./features/disc-golf/services/CompetitionSe
 import * as chatRepo from "./db/repositories/ChatRepository";
 import { startMorningGreeter } from "./scheduler/morningGreeter";
 
-import { register as registerCompetition } from "./bot/handlers/competition";
-import { register as registerPlayers } from "./bot/handlers/players";
-import { register as registerScores } from "./bot/handlers/scores";
-import { register as registerWeather } from "./bot/handlers/weather";
-import { register as registerRecipe } from "./bot/handlers/recipe";
-import { register as registerFun } from "./bot/handlers/fun";
+import { competition } from "./bot/handlers/competition";
+import { players } from "./bot/handlers/players";
+import { scores } from "./bot/handlers/scores";
+import { weather } from "./bot/handlers/weather";
+import { recipe } from "./bot/handlers/recipe";
+import { fun } from "./bot/handlers/fun"; // must be last — catches all message:text
 
-registerCompetition(bot);
-registerPlayers(bot);
-registerScores(bot);
-registerWeather(bot);
-registerRecipe(bot);
-registerFun(bot);  // must be last — its message:text handler swallows remaining messages
+bot.use(competition);
+bot.use(players);
+bot.use(scores);
+bot.use(weather);
+bot.use(recipe);
+bot.use(fun);
 
 // ── New chat handling ─────────────────────────────────────────────────────────
 

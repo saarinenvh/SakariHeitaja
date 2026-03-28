@@ -1,12 +1,14 @@
 import { bot } from "../../bot/bot";
 import Poller from "./poller";
 import { detectChanges, hasCompetitionEnded } from "./changeDetector";
-import { generateComment, generateHeader } from "./commentary";
+import { formatCommentaryMessage, formatTopList, truncateCourseName } from "./commentary";
 import * as playerRepo from "../../db/repositories/PlayerRepository";
 import * as competitionService from "./services/CompetitionService";
 import * as courseService from "./services/CourseService";
 import * as scoreService from "./services/ScoreService";
 import { MetrixApiResponse, TrackedPlayer, Change } from "../../types/metrix";
+import { competition as MSG } from "../../config/messages";
+import { HTML_NO_PREVIEW } from "../../config/bot";
 import Logger from "js-logger";
 
 const BASE_URL = "https://discgolfmetrix.com/api.php?content=result&id=";
@@ -16,7 +18,7 @@ export class Orchestrator {
   metrixId: string;
   chatId: number;
   following: boolean = true;
-  data: MetrixApiResponse | null = null;
+  snapshot: MetrixApiResponse | null = null;
   trackedPlayers: TrackedPlayer[] = [];
 
   private playersAnnounced: boolean;
@@ -31,35 +33,35 @@ export class Orchestrator {
 
   async init(): Promise<this> {
     const { getData } = await import("../../lib/http");
-    const newData = await getData<MetrixApiResponse>(`${BASE_URL}${this.metrixId}`);
+    const initialSnapshot = await getData<MetrixApiResponse>(`${BASE_URL}${this.metrixId}`);
 
-    if (!newData?.Competition) {
+    if (!initialSnapshot?.Competition) {
       Logger.error(`Orchestrator ${this.metrixId}: invalid initial data`);
       this.following = false;
       return this;
     }
 
-    this.data = newData;
+    this.snapshot = initialSnapshot;
     await this._refreshTrackedPlayers();
 
-    Logger.info(`Started following: ${this.data.Competition.Name} (${this.metrixId})`);
+    Logger.info(`Started following: ${this.snapshot.Competition.Name} (${this.metrixId})`);
 
     if (this.trackedPlayers.length === 0) {
       Logger.info(`${this.metrixId}: no tracked players, stopping`);
-      await bot.api.sendMessage(this.chatId, "Ei löydy seurattavia pelaajia tästä kisasta. Lopetan seuraamisen.");
+      await bot.api.sendMessage(this.chatId, MSG.followNoPlayers);
       this.following = false;
       return this;
     }
 
-    this._announceIfNeeded();
+    await this._announceIfNeeded();
 
-    const initialDelay = this._msUntilStart(this.data.Competition.Date);
+    const initialDelay = this._msUntilStart(this.snapshot.Competition.Date);
     if (initialDelay > 0) {
-      Logger.info(`${this.data.Competition.Name} starts in ${Math.round(initialDelay / 60000)}min`);
+      Logger.info(`${this.snapshot.Competition.Name} starts in ${Math.round(initialDelay / 60000)}min`);
     }
 
     this.poller = new Poller(this.metrixId, BASE_URL);
-    this.poller.on("data", (data: MetrixApiResponse) => this._onData(data));
+    this.poller.on("data", (snapshot: MetrixApiResponse) => this._onPollResult(snapshot));
     this.poller.on("fetchError", (err: Error) => Logger.error(`${this.metrixId}: ${err.message}`));
     this.poller.start(initialDelay);
 
@@ -72,69 +74,54 @@ export class Orchestrator {
   }
 
   getScoreByPlayerName(name: string) {
-    return this.data?.Competition.Results.find(n => n.Name === name);
+    return this.snapshot?.Competition.Results.find(result => result.Name === name);
   }
 
-  createTopList(): void {
+  sendTopList(): void {
     this._sendTopList();
   }
 
-  private async _onData(newData: MetrixApiResponse): Promise<void> {
+  private async _onPollResult(freshSnapshot: MetrixApiResponse): Promise<void> {
     if (!this.following) return;
 
     try {
-      if (!this.data || this.data === newData) {
+      if (!this.snapshot || this.snapshot === freshSnapshot) {
         this.poller!.reportChanges(false);
         return;
       }
 
-      const changes = detectChanges(this.data, newData, this.trackedPlayers);
+      const changes = detectChanges(this.snapshot, freshSnapshot, this.trackedPlayers);
       const hadChanges = changes.length > 0;
 
       if (hadChanges) {
-        await this._sendCommentary(changes, newData);
+        await this._sendCommentary(changes);
       } else {
-        Logger.debug(`${this.data.Competition.Name} ${this.metrixId}: no changes`);
+        Logger.debug(`${this.snapshot.Competition.Name} ${this.metrixId}: no changes`);
       }
 
       this.poller!.reportChanges(hadChanges);
-      this.data = newData;
+      this.snapshot = freshSnapshot;
       await this._refreshTrackedPlayers();
 
       if (hasCompetitionEnded(this.trackedPlayers)) {
         await this._handleCompetitionEnd();
       }
+
     } catch (err: any) {
       Logger.error(`Orchestrator ${this.metrixId}: ${err.message}`);
       this.poller!.reportChanges(false);
     }
   }
 
-  private async _sendCommentary(changes: Change[], newData: MetrixApiResponse): Promise<void> {
-    const byHole: Record<number, string[]> = {};
-    for (const change of changes) {
-      if (!byHole[change.hole]) byHole[change.hole] = [];
-      byHole[change.hole].push(generateComment(change));
-    }
+  private async _sendCommentary(changes: Change[]): Promise<void> {
+    const message = formatCommentaryMessage(changes, this.metrixId, this.snapshot!.Competition.CourseName);
+    
+    await bot.api.sendMessage(this.chatId, message, HTML_NO_PREVIEW);
 
-    let message = `${generateHeader()}\n`;
-    for (const hole of Object.keys(byHole)) {
-      message += `\n*********** Väylä numero ${parseInt(hole) + 1} ***********\n`;
-      message += `<i><a href="https://discgolfmetrix.com/${this.metrixId}">${this._truncateName(this.data!.Competition.CourseName)}</a></i>\n\n`;
-      for (const line of byHole[parseInt(hole)]) {
-        message += `${line} \n\n`;
-      }
-    }
-
-    await bot.api.sendMessage(this.chatId, message, {
-      parse_mode: "HTML",
-      link_preview_options: { is_disabled: true },
-    });
-
-    Logger.debug(`Changes in ${this.data!.Competition.Name}, ${this.metrixId}`);
+    Logger.debug(`Changes in ${this.snapshot!.Competition.Name}, ${this.metrixId}`);
 
     for (const change of changes) {
-      await scoreService.saveSuperScore(change, this.chatId, this.id, this.data!.Competition.CourseName);
+      await scoreService.saveSuperScore(change, this.chatId, this.id, this.snapshot!.Competition.CourseName);
     }
   }
 
@@ -142,64 +129,40 @@ export class Orchestrator {
     this.following = false;
     this.poller!.stop();
 
-    Logger.info(`Game ${this.data!.Competition.Name}, ${this.metrixId} is finished`);
+    Logger.info(`Game ${this.snapshot!.Competition.Name}, ${this.metrixId} is finished`);
 
-    setTimeout(() => {
-      bot.api.sendMessage(this.chatId, "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!");
-    }, 1000);
-
+    await bot.api.sendMessage(this.chatId, MSG.endSoon);
     await competitionService.markDone(this.id);
 
-    const course = await courseService.getOrCreate(this.data!.Competition.CourseName);
+    const course = await courseService.getOrCreate(this.snapshot!.Competition.CourseName);
     if (course) {
       await scoreService.saveResults(this.trackedPlayers, this.chatId, course.id, this.id);
     }
 
-    setTimeout(() => this._sendTopList(), 2000);
+    this._sendTopList();
   }
 
-  private _sendTopList(): void {
-    const results = this.data!.Competition.Results;
-    const divisions = [...new Set(results.map(n => n.ClassName))];
-    const rankings: Record<string, typeof results> = {};
-
-    for (const div of divisions) {
-      rankings[div] = results
-        .filter(n => n.ClassName === div && n.OrderNumber <= 5)
-        .sort((a, b) => a.OrderNumber - b.OrderNumber);
-    }
-
-    const others = this.trackedPlayers.filter(p => p.OrderNumber > 5);
-    if (others.length) {
-      rankings["Muut Sankarit"] = others.sort((a, b) => a.OrderNumber - b.OrderNumber);
-    }
-
-    let str = `${this.data!.Competition.Name} TOP-5\n\n`;
-    for (const [div, players] of Object.entries(rankings)) {
-      str += `Sarja ${div}\n`;
-      for (const p of players) str += `${p.OrderNumber}. ${p.Name}\t\t\t\t${p.Diff}\n`;
-      str += "\n";
-    }
-
-    bot.api.sendMessage(this.chatId, str);
+  private async _sendTopList(): Promise<void> {
+    const message = formatTopList(this.snapshot!.Competition.Name, this.snapshot!.Competition.Results, this.trackedPlayers);
+    await bot.api.sendMessage(this.chatId, message);
   }
 
   private async _refreshTrackedPlayers(): Promise<void> {
     const chatPlayers = await playerRepo.findByChatId(this.chatId);
-    this.trackedPlayers = this.data!.Competition.Results
-      .filter(result => chatPlayers.find(p => p.name === result.Name))
+    this.trackedPlayers = this.snapshot!.Competition.Results
+      .filter(result => chatPlayers.find(chatPlayer => chatPlayer.name === result.Name))
       .map(result => {
-        const p = chatPlayers.find(p => p.name === result.Name)!;
-        return { ...result, id: p.id };
+        const chatPlayer = chatPlayers.find(chatPlayer => chatPlayer.name === result.Name)!;
+        return { ...result, id: chatPlayer.id };
       });
   }
 
-  private _announceIfNeeded(): void {
+  private async _announceIfNeeded(): Promise<void> {
     if (this.trackedPlayers.length === 0 || this.playersAnnounced) return;
-    const course = `<a href="https://discgolfmetrix.com/${this.metrixId}">${this._truncateName(this.data!.Competition.CourseName)}</a>`;
-    let str = `Peliareenana toimii ${course}\n\nJa tällä kertaa kisassa on mukana:\n`;
-    for (const p of this.trackedPlayers) str += `${p.Name}\n`;
-    bot.api.sendMessage(this.chatId, str, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+    const course = `<a href="https://discgolfmetrix.com/${this.metrixId}">${truncateCourseName(this.snapshot!.Competition.CourseName)}</a>`;
+    let message = `Peliareenana toimii ${course}\n\nJa tällä kertaa kisassa on mukana:\n`;
+    for (const player of this.trackedPlayers) message += `${player.Name}\n`;
+    await bot.api.sendMessage(this.chatId, message, HTML_NO_PREVIEW);
     this.playersAnnounced = true;
   }
 
@@ -208,10 +171,5 @@ export class Orchestrator {
     now.setHours(now.getHours() + 2);
     const diff = new Date(date).getTime() - now.getTime();
     return diff > 0 ? diff : 0;
-  }
-
-  private _truncateName(str: string): string {
-    const name = str.replace(/&rarr;/g, "");
-    return name.length > 38 ? `${name.slice(0, 37)}...` : name;
   }
 }
