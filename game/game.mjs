@@ -14,6 +14,7 @@ import * as queries from "../async/queries.mjs";
 import * as Helpers from "../helpers/helpers.mjs";
 import Logger from "js-logger";
 import { loggerSettings } from "../logger.mjs";
+import Poller from "./poller.mjs";
 Logger.useDefaults(loggerSettings);
 
 class Game {
@@ -31,22 +32,20 @@ class Game {
     this.competitionId;
     this.playersAnnounced = announced;
     this.saved = false;
-    this.tickCounter = 2;
+    this.poller = null;
   }
 
   stopFollowing() {
     this.following = false;
+    if (this.poller) this.poller.stop();
   }
 
-  // Find if the competition has started, if it has, query every 5s, otherwise count the start time
-  countNextInterval(date) {
+  // Returns ms until competition start (or 0 if already started)
+  msUntilStart(date) {
     const now = new Date();
     now.setHours(now.getHours() + 2);
-    let toStart = new Date(date) - now;
-    if (toStart < 0) {
-      return 5000;
-    }
-    return toStart;
+    const toStart = new Date(date) - now;
+    return toStart > 0 ? toStart : 0;
   }
 
   async findChannelPlayers() {
@@ -69,10 +68,126 @@ class Game {
       }
     });
 
-    setTimeout(n => {
-      this.startFollowing();
-    }, 5000);
+    // Calculate how long to wait before polling starts
+    const initialDelay = this.msUntilStart(this.data.Competition.Date);
+    if (initialDelay > 0) {
+      Logger.info(`${this.data.Competition.Name} ${this.metrixId} starts in ${Math.round(initialDelay / 60000)}min, delaying poller`);
+    }
+
+    // Create and start the poller
+    this.poller = new Poller(this.metrixId, this.baseUrl);
+    this.poller.on("data", newData => this._onData(newData));
+    this.poller.on("fetchError", err => {
+      Logger.error(`Game ${this.metrixId}: fetch error: ${err.message}`);
+    });
+    this.poller.start(initialDelay);
+
     return this;
+  }
+
+  async _onData(newData) {
+    if (!this.following) return;
+
+    try {
+      if (this.data && this.data !== newData) {
+        this.newRound = newData;
+        const combinedComments = {};
+
+        // Create comments for changes happened in this interval
+        this.playersToFollow.forEach(n => {
+          const comment = this.checkChangesAndComment(n.Name);
+          if (
+            comment &&
+            !Object.keys(combinedComments).includes(comment.hole.toString())
+          ) {
+            combinedComments[comment.hole] = [];
+          }
+          if (comment) {
+            combinedComments[comment.hole].push(comment.text);
+          }
+        });
+
+        // Build and send message if there were any changes
+        let str = `${this.getStartText()} \n`;
+        Object.keys(combinedComments).forEach(n => {
+          str = str.concat(
+            `*********** Väylä numero ${parseInt(n) + 1} ***********\n`
+          );
+          str = str.concat(
+            `<i><a href="https://discgolfmetrix.com/${
+              this.metrixId
+            }">${this.modifyCourseName(
+              this.data.Competition.CourseName
+            )}</a></i>\n\n`
+          );
+          combinedComments[n].forEach(i => {
+            str = str.concat(`${i} \n\n`);
+          });
+        });
+
+        const hadChanges = Object.keys(combinedComments).length > 0;
+        if (hadChanges) {
+          bot.sendMessage(this.chatId, str, {
+            parse_mode: "HTML",
+            disable_web_page_preview: true
+          });
+          Logger.debug(
+            `Changes in game ${this.data.Competition.Name}, ${this.metrixId}`
+          );
+        } else {
+          Logger.debug(
+            `${this.data.Competition.Name} ${this.metrixId}: no changes`
+          );
+        }
+
+        // Report back to poller so it can adjust the next interval
+        this.poller.reportChanges(hadChanges);
+
+        // Update stored data
+        this.data = this.newRound;
+        this.findPlayersToFollow();
+
+        // Check if competition has ended
+        if (this.hasCompetitionEnded()) {
+          this.following = false;
+          this.poller.stop();
+          setTimeout(() => {
+            bot.sendMessage(
+              this.chatId,
+              "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!"
+            );
+          }, 1000);
+          queries.markCompetitionFinished(this.id);
+          queries.addCourse(this.data.Competition.CourseName);
+          queries.fetchCourse(this.data.Competition.CourseName).then(i => {
+            this.playersToFollow.forEach(n => {
+              queries.addResults(
+                n.id,
+                this.chatId,
+                i[0].id,
+                this.id,
+                n.Diff,
+                n.Sum
+              );
+            });
+          });
+          Logger.info(
+            `Game ${this.data.Competition.Name}, ${this.metrixId} is finished`
+          );
+          setTimeout(() => {
+            this.createTopList();
+          }, 2000);
+        }
+      } else {
+        Logger.debug(
+          `${this.data.Competition.Name} ${this.metrixId}: no changes`
+        );
+        this.poller.reportChanges(false);
+      }
+    } catch (e) {
+      Logger.error(e);
+      this.poller.reportChanges(false);
+    }
   }
 
   modifyCourseName(str) {
@@ -84,125 +199,12 @@ class Game {
     }
   }
 
-  async startFollowing() {
-    // Condition for following the contest
-    if (this.following) {
-      // Async func to fetch data from metrix
-      await getData(`${this.baseUrl}${this.metrixId}`).then(newData => {
-        try {
-          // Check if data exists and there are changes
-          if (this.data && this.data != newData) {
-            this.newRound = newData;
-            const combinedComments = {};
-
-            // Create comments for changed happened in this interval
-            this.playersToFollow.forEach(n => {
-              const comment = this.checkChangesAndComment(n.Name);
-              if (
-                comment &&
-                !Object.keys(combinedComments).includes(comment.hole.toString())
-              ) {
-                combinedComments[comment.hole] = [];
-              }
-              if (comment) {
-                combinedComments[comment.hole].push(comment.text);
-              }
-            });
-
-            // Create message from comments created
-            let str = `${this.getStartText()} \n`;
-            Object.keys(combinedComments).forEach(n => {
-              str = str.concat(
-                `*********** Väylä numero ${parseInt(n) + 1} ***********\n`
-              );
-
-              str = str.concat(
-                `<i><a href="https://discgolfmetrix.com/${
-                  this.metrixId
-                }">${this.modifyCourseName(
-                  this.data.Competition.CourseName
-                )}</a></i>\n\n`
-              );
-              combinedComments[n].forEach(i => {
-                str = str.concat(`${i} \n\n`);
-              });
-            });
-            if (Object.keys(combinedComments).length > 0) {
-              bot.sendMessage(this.chatId, str, {
-                parse_mode: "HTML",
-                disable_web_page_preview: true
-              });
-              Logger.debug(
-                `Changes in game ${this.data.Competition.Name}, ${this.metrixId}`
-              );
-            }
-
-            // Update the "new data" as old
-            this.data = this.newRound;
-            this.findPlayersToFollow();
-          } else {
-            Logger.debug(
-              `${this.data.Competition.Name} ${this.metrixId}: no changes`
-            );
-          }
-
-          // Check if competition has ended
-          if (this.hasCompetitionEnded()) {
-            this.following = false;
-            setTimeout(n => {
-              bot.sendMessage(
-                this.chatId,
-                "Dodii, ne kisat oli sit siinä, tässä olis sit vielä lopputulokset!"
-              );
-            }, 1000);
-            queries.markCompetitionFinished(this.id);
-            queries.addCourse(this.data.Competition.CourseName);
-            queries.fetchCourse(this.data.Competition.CourseName).then(i => {
-              this.playersToFollow.forEach(n => {
-                queries.addResults(
-                  n.id,
-                  this.chatId,
-                  i[0].id,
-                  this.id,
-                  n.Diff,
-                  n.Sum
-                );
-              });
-            });
-
-            Logger.info(
-              `Game ${this.data.Competition.Name}, ${this.metrixId} is finished`
-            );
-            setTimeout(n => {
-              this.createTopList();
-            }, 2000);
-          }
-        } catch (e) {
-          console.log(e);
-        }
-      });
-
-      // Competition continues, keep fetching
-      const nextTick = this.countNextInterval(this.data.Competition.Date);
-      if (nextTick > 5000)
-        Logger.info(
-          `${this.data.Competition.Name} ${this.metrixId} will start ${this.data.Competition.Date}, time to start ${nextTick}`
-        );
-      setTimeout(n => {
-        this.startFollowing();
-        if (this.tickCounter == 0) {
-          this.tickCounter = 3;
-        }
-        this.tickCounter -= 1;
-      }, nextTick);
-    }
-  }
-
   hasCompetitionEnded() {
-    let bool = this.playersToFollow.map(n =>
-      n.PlayerResults.every(hole => !Array.isArray(hole))
-    );
-    return bool.every(n => n === true);
+    if (this.playersToFollow.length === 0) return false;
+    return this.playersToFollow.every(n => {
+      if (!n.PlayerResults || n.PlayerResults.length === 0) return false;
+      return n.PlayerResults.every(hole => !Array.isArray(hole));
+    });
   }
 
   async findPlayersToFollow() {
@@ -218,7 +220,7 @@ class Game {
       }
     });
 
-    // Create announce messasge
+    // Create announce message
     if (this.playersToFollow.length > 0 && !this.playersAnnounced) {
       const course = `<a href="https://discgolfmetrix.com/${
         this.metrixId
@@ -289,7 +291,6 @@ class Game {
     for (let i of this.playersToFollow) {
       if (i.OrderNumber > 5) othersToFollow.push(i);
     }
-
     return othersToFollow.sort((a, b) =>
       a.OrderNumber > b.OrderNumber ? 1 : -1
     );
@@ -310,7 +311,7 @@ class Game {
     }
   }
 
-  // Returns the hole where new results came from from a certain player
+  // Returns the hole where new results came from for a certain player
   getHole(playerName) {
     const datalistOld = this.data.Competition.Results.find(
       n => n.Name == playerName
@@ -319,9 +320,7 @@ class Game {
       n => n.Name == playerName
     ).PlayerResults;
 
-    //If player has results
     if (datalistOld && datalistNew) {
-      // Modify the scorelists, because the metrixapi sux
       const holeMapOld = datalistOld.map((item, index) => {
         if (Array.isArray(item)) {
           return { Result: "", Diff: "", OB: "", Played: false, Index: index };
@@ -342,7 +341,6 @@ class Game {
         }
       });
 
-      // find which hole has changes
       for (let i = 0; i < holeMapNew.length; i++) {
         if (holeMapNew[i].Result !== holeMapOld[i].Result) {
           return i;

@@ -4,12 +4,16 @@ import { loggerSettings } from "../logger.mjs";
 Logger.useDefaults(loggerSettings);
 
 export async function fetchPlayers() {
-  let data = "";
-  mysql.query("SELECT * FROM Players", function(error, results, fields) {
-    if (error) throw error;
-    data = results;
-    return data;
+  let data = await new Promise((res, rej) => {
+    mysql.query("SELECT * FROM Players", function(error, results, fields) {
+      if (error) {
+        Logger.info(error);
+      } else {
+        res(results);
+      }
+    });
   });
+  return JSON.parse(JSON.stringify(data));
 }
 
 export async function fetchPlayer(name) {
@@ -174,7 +178,7 @@ export async function fetchUnfinishedCompetitions() {
 export async function fetchCompetitionsByChatId(chatId) {
   const data = await new Promise((res, rej) => {
     mysql.query(
-      `SELECT * FROM Competitions where chatId = chatId AND finished = false`,
+      `SELECT * FROM Competitions where chatId = ${chatId} AND finished = false`,
       function(error, results, fields) {
         if (error) {
           Logger.error(error);

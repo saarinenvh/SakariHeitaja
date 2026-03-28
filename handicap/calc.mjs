@@ -52,6 +52,15 @@ const handicaps = [
 
 class HandicappedScores {
   async countScores() {
+    // Reset accumulated scores before counting to avoid corruption on repeated calls
+    for (let competition of competitions) {
+      for (let player of competition.players) {
+        player.score = 0;
+        player.handicappedScore = 0;
+      }
+    }
+    counted = false;
+
     this.countHandicaps();
     for (let competition of competitions) {
       if (!counted) {
@@ -112,7 +121,6 @@ class HandicappedScores {
         );
         break;
       case "all":
-        console.log("asdf");
         text = "";
         for (let competition of competitions) {
           text += this.createCompetitionMessage(competition) + "\n";

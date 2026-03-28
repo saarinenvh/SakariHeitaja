@@ -7,6 +7,11 @@ import { loggerSettings } from "./logger.mjs";
 Logger.useDefaults(loggerSettings);
 dotenv.config();
 
+// Catch unhandled Telegram API errors (e.g. bot not in chat) without crashing
+process.on("unhandledRejection", err => {
+  Logger.warn(`Unhandled rejection: ${err.message}`);
+});
+
 // Import all the quotes, future these will be in DB
 import {
   sakariNames,
@@ -147,7 +152,7 @@ async function checkAndAddNewChat(chatId, chatName) {
 
 // Stupid feature FIX!!
 function todaysGames() {
-  if (!new Date().toLocaleDateString() == date) {
+  if (new Date().toLocaleDateString() !== date) {
     games = {};
   }
   let str = "";
@@ -393,8 +398,11 @@ function formatAndSendScores(scores, chatId) {
 }
 
 function startTimer() {
-  const chatId = -1001107508068; // SANKARIID
-  // const chatId = 69194391; // OMA ID
+  const chatId = process.env.MORNING_CHAT_ID;
+  if (!chatId) {
+    Logger.info("MORNING_CHAT_ID not set, skipping morning greeting");
+    return;
+  }
   let now = new Date();
   let millisTill09 =
     new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0) -
