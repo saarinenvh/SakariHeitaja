@@ -54,32 +54,21 @@ bot.onText(/\/mitatanaansyotaisiin/, (msg, match) => {
 
 bot.onText(/\/pelit/, (msg, match) => {
   const chatId = msg.chat.id;
-  queries.fetchCompetitionsByChatId(chatId).then(competitions => {
-    let message = "";
-    if (
-      competitionsToFollow[chatId] &&
-      competitionsToFollow[chatId].length > 0
-    ) {
-      // Remove finished competitions from competition object
-      competitions.forEach(i => {
-        if (i.finished === 1)
-          competitionsToFollow[chatId].splice(
-            competitionsToFollow[chatId].findIndex(j => j.id === i.id),
-            1
-          );
-      });
+  const active = (competitionsToFollow[chatId] || []).filter(n => n.following);
+  competitionsToFollow[chatId] = active;
 
-      message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
-      competitionsToFollow[chatId].forEach((n, i) => {
-        message += `${n.id}: ${n.data.Competition.Name}, ${n.playersToFollow.length} sankari(a). https://discgolfmetrix.com/${n.metrixId}\n`;
-      });
-    } else {
-      message = "Eihän tässä nyt taas mitään ole käynnissä...";
-    }
-    bot.sendMessage(chatId, message, {
-      parse_mode: "HTML",
-      disable_web_page_preview: true
+  let message = "";
+  if (active.length > 0) {
+    message += "Tällä hetkellä tuijotetaan kivikovana seuraavia blejä.\n\n";
+    active.forEach(n => {
+      message += `${n.id}: ${n.data.Competition.Name}, ${n.playersToFollow.length} sankari(a). https://discgolfmetrix.com/${n.metrixId}\n`;
     });
+  } else {
+    message = "Eihän tässä nyt taas mitään ole käynnissä...";
+  }
+  bot.sendMessage(chatId, message, {
+    parse_mode: "HTML",
+    disable_web_page_preview: true
   });
 });
 
