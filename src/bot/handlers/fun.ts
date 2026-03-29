@@ -1,8 +1,9 @@
 import { Composer } from "grammy";
 import { getRandom } from "../../shared/utils";
 import { searchGiphy } from "../../shared/giphy";
-import { sakariNames, sakariResponses, randomQuote } from "../../config/phrases";
+import { sakariNames, randomQuote } from "../../config/phrases";
 import { fun as MSG } from "../../config/messages";
+import { heckle, recordMessage } from "../llmHeckler";
 
 let games: Record<string, string> = {};
 let date = new Date().toLocaleDateString();
@@ -36,7 +37,7 @@ fun.command("kukakirjaa", async ctx => {
 });
 
 // /gifplz <search term>
-// Searches Gfycat for a matching GIF/video and sends a random result.
+// Searches Giphy for a matching GIF/video and sends a random result.
 fun.command("gifplz", async ctx => {
   if (!ctx.match) return ctx.reply(MSG.gifplzUsage);
   const gifUrl = await searchGiphy(ctx.match);
@@ -76,12 +77,13 @@ fun.command("apua", async ctx => {
 // - Sends a random quote to any message (~1 in 40 chance)
 // Does not call next(), so it must be registered after all command handlers.
 fun.on("message:text", async ctx => {
-  const text = ctx.message.text.toLowerCase();
+  const text = ctx.message.text;
+  recordMessage(ctx.chat.id, text);
   let said = false;
 
-  if (sakariNames.find(name => text.includes(name.toLowerCase()))) {
+  if (sakariNames.find(name => text.toLowerCase().includes(name.toLowerCase()))) {
     if (getRandom(2) === 1) {
-      await ctx.reply(sakariResponses[getRandom(sakariResponses.length)]);
+      await ctx.reply(await heckle(ctx.chat.id, text));
       said = true;
     }
   }

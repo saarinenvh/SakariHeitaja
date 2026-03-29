@@ -6,7 +6,7 @@ import * as playerRepo from "../../db/repositories/PlayerRepository";
 import * as competitionService from "./services/CompetitionService";
 import * as courseService from "./services/CourseService";
 import * as scoreService from "./services/ScoreService";
-import { MetrixApiResponse, TrackedPlayer, Change } from "../../types/metrix";
+import { MetrixApiResponse, MetrixPlayerResult, TrackedPlayer, Change } from "../../types/metrix";
 import { competition as MSG } from "../../config/messages";
 import { HTML_NO_PREVIEW } from "../../config/bot";
 import Logger from "js-logger";
@@ -94,7 +94,7 @@ export class Orchestrator {
       const hadChanges = changes.length > 0;
 
       if (hadChanges) {
-        await this._sendCommentary(changes);
+        await this._sendCommentary(changes, freshSnapshot.Competition.Results);
       } else {
         Logger.debug(`${this.snapshot.Competition.Name} ${this.metrixId}: no changes`);
       }
@@ -113,8 +113,8 @@ export class Orchestrator {
     }
   }
 
-  private async _sendCommentary(changes: Change[]): Promise<void> {
-    const message = formatCommentaryMessage(changes, this.metrixId, this.snapshot!.Competition.CourseName);
+  private async _sendCommentary(changes: Change[], freshResults: MetrixPlayerResult[]): Promise<void> {
+    const message = await formatCommentaryMessage(changes, this.metrixId, this.snapshot!.Competition.CourseName, freshResults);
     
     await bot.api.sendMessage(this.chatId, message, HTML_NO_PREVIEW);
 

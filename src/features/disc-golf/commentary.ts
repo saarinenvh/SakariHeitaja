@@ -1,5 +1,30 @@
 import { getRandom } from "../../shared/utils";
 import { Change, MetrixHoleResult, MetrixPlayerResult, TrackedPlayer } from "../../types/metrix";
+import { generateLlmComment } from "./llmCommentary";
+
+const llmEnabled = process.env.LLM_ENABLED === "true";
+
+function getPositionDeltaText(prev: number, next: number): string {
+  const delta = prev - next;
+  if (delta === 0) return "";
+  if (delta > 0) return delta === 1 ? ", kipusi sijan ylös" : `, nousi ${delta} sijaa`;
+  return Math.abs(delta) === 1 ? ", putosi sijan" : `, putosi ${Math.abs(delta)} sijaa`;
+}
+
+function getCompetitionContextSuffix(player: MetrixPlayerResult, results: MetrixPlayerResult[]): string {
+  const leader = results.find(r => r.OrderNumber === 1);
+  if (!leader) return "";
+
+  if (player.OrderNumber === 1) {
+    const tiedAtTop = results.filter(r => r.OrderNumber === 1).length > 1;
+    return tiedAtTop ? " – tasatilanteessa johdossa!" : " – ja JOHTAA KISAA!";
+  }
+
+  const gap = player.Diff - leader.Diff;
+  if (gap === 0) return " – tasatilanteessa johdosta!";
+  if (player.OrderNumber <= 3 && gap <= 2) return ` – vain ${gap} takana johtajasta`;
+  return "";
+}
 
 const narratives = [
   "Ihmiset ovat suorittaneet firsbeegolf heittoja!",
@@ -113,18 +138,30 @@ function getStartText(type: ScoreType): string {
   return pick(startTexts.bad);
 }
 
-export function generateComment(change: Change): string {
+export function generateFlavor(change: Change): string {
   const { newPlayer, holeResult } = change;
   const type      = getScoreType(holeResult);
   const startText = getStartText(type);
   const scoreText = getScoreText(type, holeResult);
   const verb      = pick(verbs);
   const obPhrase  = holeResult.PEN > 0 ? pick(obPhrases) : "";
+  return `${startText} ${newPlayer.Name} ${verb} ${scoreText}${obPhrase}`;
+}
+
+export function generateComment(change: Change, results?: MetrixPlayerResult[]): string {
+  const { newPlayer, prevPlayer, holeResult } = change;
+  const type          = getScoreType(holeResult);
+  const startText     = getStartText(type);
+  const scoreText     = getScoreText(type, holeResult);
+  const verb          = pick(verbs);
+  const obPhrase      = holeResult.PEN > 0 ? pick(obPhrases) : "";
+  const positionDelta = getPositionDeltaText(prevPlayer.OrderNumber, newPlayer.OrderNumber);
+  const contextSuffix = results ? getCompetitionContextSuffix(newPlayer, results) : "";
 
   return (
-    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${obPhrase}, ` +
+    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${obPhrase}${positionDelta}, ` +
     `tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ` +
-    `ja sijalla <b>${newPlayer.OrderNumber}</b>`
+    `ja sijalla <b>${newPlayer.OrderNumber}</b>${contextSuffix}`
   );
 }
 
@@ -137,11 +174,15 @@ export function truncateCourseName(rawName: string): string {
   return name.length > 38 ? `${name.slice(0, 37)}...` : name;
 }
 
-export function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string): string {
+export async function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string, results: MetrixPlayerResult[]): Promise<string> {
+  const commentFn = llmEnabled
+    ? (change: Change) => generateLlmComment(change, courseName, results)
+    : (change: Change) => Promise.resolve(generateComment(change, results));
+
   const byHole: Record<number, string[]> = {};
   for (const change of changes) {
     if (!byHole[change.hole]) byHole[change.hole] = [];
-    byHole[change.hole].push(generateComment(change));
+    byHole[change.hole].push(await commentFn(change));
   }
 
   const courseLink = `<i><a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a></i>`;

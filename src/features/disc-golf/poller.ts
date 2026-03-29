@@ -5,9 +5,9 @@ import Logger from "js-logger";
 import { loggerSettings } from "../../shared/logger";
 Logger.useDefaults(loggerSettings);
 
-const INTERVAL_ACTIVE  = 30_000;
-const INTERVAL_IDLE    = 60_000;
-const INTERVAL_DORMANT = 120_000;
+const INTERVAL_ACTIVE  = parseInt(process.env.POLL_INTERVAL_ACTIVE  ?? "30000");
+const INTERVAL_IDLE    = parseInt(process.env.POLL_INTERVAL_IDLE    ?? "60000");
+const INTERVAL_DORMANT = parseInt(process.env.POLL_INTERVAL_DORMANT ?? "120000");
 const ERROR_BASE       = 60_000;
 const ERROR_MAX        = 600_000;
 const IDLE_THRESHOLD    = 3;
