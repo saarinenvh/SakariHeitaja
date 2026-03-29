@@ -1,5 +1,7 @@
 export const loggerSettings = {
-  formatter: function (messages: any[], _context: any) {
-    messages.unshift(new Date().toLocaleString("fi-FI", { timeZone: "Europe/Helsinki" }));
+  formatter: function (messages: any[], context: any) {
+    const timestamp = new Date().toISOString();
+    const level = context.level.name.toUpperCase().padEnd(5);
+    messages.unshift(`${timestamp} [${level}]`);
   },
 };
