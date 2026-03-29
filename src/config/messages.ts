@@ -3,6 +3,7 @@ export const competition = {
   followNoNumber:   "Ei löydy numeroa viestistä, urpo.",
   followStarted:    "Okei, aletaan kattoo vähä kiekkogolffii (c) Ian Andersson",
   followNoPlayers:  "Ei löydy seurattavia pelaajia tästä kisasta. Lopetan seuraamisen.",
+  followInvalid:    "Mitä sä säädät?? XD Laita se kisa julkiseks tai kokeile oikeeta osotetta!",
 
   lopetaUsage:      "Anna kisan id. Esim: /lopeta 42",
   lopetaOk:         "No olihan se kivaa taas, jatketaan ens kerralla.",

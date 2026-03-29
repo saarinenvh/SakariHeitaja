@@ -19,9 +19,16 @@ competition.command("follow", async ctx => {
 
   const chatId = ctx.chat.id;
   const result = await competitionService.start(chatId, ctx.chat.title ?? "", metrixId);
-  await ctx.reply(MSG.followStarted);
 
   const orchestrator = await new Orchestrator(result.insertId, metrixId, chatId).init();
+
+  if (!orchestrator.following) {
+    await ctx.reply(MSG.followInvalid);
+    await competitionService.remove(metrixId);
+    return;
+  }
+
+  await ctx.reply(MSG.followStarted);
   registry.add(chatId, orchestrator);
 });
 
