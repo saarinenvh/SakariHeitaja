@@ -1,6 +1,6 @@
 import { Composer } from "grammy";
-import { getRandom } from "../../lib/utils";
-import { searchGiphy } from "../../lib/giphy";
+import { getRandom } from "../../shared/utils";
+import { searchGiphy } from "../../shared/giphy";
 import { sakariNames, sakariResponses, randomQuote } from "../../config/phrases";
 import { fun as MSG } from "../../config/messages";
 

@@ -32,7 +32,7 @@ export class Orchestrator {
   }
 
   async init(): Promise<this> {
-    const { getData } = await import("../../lib/http");
+    const { getData } = await import("../../shared/http");
     const initialSnapshot = await getData<MetrixApiResponse>(`${BASE_URL}${this.metrixId}`);
 
     if (!initialSnapshot?.Competition) {

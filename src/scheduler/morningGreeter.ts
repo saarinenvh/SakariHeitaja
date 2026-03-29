@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
-import { sendWeatherMessage } from "../lib/weather";
-import { searchGiphy } from "../lib/giphy";
-import { getRandom, formatDate } from "../lib/utils";
+import { sendWeatherMessage } from "../shared/weather";
+import { searchGiphy } from "../shared/giphy";
+import { getRandom, formatDate } from "../shared/utils";
 import { randomGoodMorning, giphySearchWords, citys } from "../config/phrases";
 import Logger from "js-logger";
 import { HTML_OPTIONS } from "../config/bot";

@@ -1,7 +1,7 @@
 import { Composer } from "grammy";
-import { sendWeatherMessage } from "../../lib/weather";
+import { sendWeatherMessage } from "../../shared/weather";
 import { citys } from "../../config/phrases";
-import { getRandom } from "../../lib/utils";
+import { getRandom } from "../../shared/utils";
 import { weather as MSG } from "../../config/messages";
 
 export const weather = new Composer();

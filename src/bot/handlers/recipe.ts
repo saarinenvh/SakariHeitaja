@@ -1,6 +1,6 @@
 import { Composer } from "grammy";
-import { getData } from "../../lib/http";
-import { getRandom } from "../../lib/utils";
+import { getData } from "../../shared/http";
+import { getRandom } from "../../shared/utils";
 import { recipe as MSG } from "../../config/messages";
 
 interface RecipeIngredient {

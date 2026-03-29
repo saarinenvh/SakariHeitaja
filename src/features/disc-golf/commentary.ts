@@ -1,4 +1,4 @@
-import { getRandom } from "../../lib/utils";
+import { getRandom } from "../../shared/utils";
 import { Change, MetrixHoleResult, MetrixPlayerResult, TrackedPlayer } from "../../types/metrix";
 
 const narratives = [

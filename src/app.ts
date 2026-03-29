@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import Logger from "js-logger";
-import { loggerSettings } from "./lib/logger";
+import { loggerSettings } from "./shared/logger";
 Logger.useDefaults(loggerSettings);
 
 import { dataSource } from "./db/dataSource";
