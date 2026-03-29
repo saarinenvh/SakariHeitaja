@@ -3,7 +3,7 @@ import { getRandom } from "../../shared/utils";
 import { searchGiphy } from "../../shared/giphy";
 import { sakariNames, randomQuote } from "../../config/phrases";
 import { fun as MSG } from "../../config/messages";
-import { heckle, recordMessage } from "../llmHeckler";
+import { heckle, llmHeckle, recordMessage } from "../llmHeckler";
 
 let games: Record<string, string> = {};
 let date = new Date().toLocaleDateString();
@@ -69,6 +69,17 @@ fun.command("pelei", async ctx => {
 fun.command("apua", async ctx => {
   await ctx.reply(MSG.apua);
 });
+
+// /heckle [message]
+// Dev command (only active when LLM_ENABLED=true): forces an LLM heckler response
+// using the chat's message buffer. Optional argument overrides the trigger message.
+if (process.env.LLM_ENABLED === "true") {
+  fun.command("heckle", async ctx => {
+    const trigger = ctx.match?.trim() || ctx.message?.text || "Sakke";
+    const reply = await llmHeckle(ctx.chat.id, trigger);
+    await ctx.reply(reply);
+  });
+}
 
 // Passive listener — must stay last in middleware registration.
 // Reacts to regular text messages (not commands) with random bot personality:

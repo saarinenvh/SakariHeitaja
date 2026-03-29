@@ -36,7 +36,7 @@ function buildContext(chatId: number, trigger: string): string {
   return lines.join("\n");
 }
 
-async function llmHeckle(chatId: number, trigger: string): Promise<string> {
+export async function llmHeckle(chatId: number, trigger: string): Promise<string> {
   const context = buildContext(chatId, trigger);
   const text = await generate(
     [

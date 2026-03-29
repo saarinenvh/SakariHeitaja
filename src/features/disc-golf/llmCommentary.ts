@@ -59,11 +59,13 @@ function buildContext(change: Change, competitionName: string, results: MetrixPl
     positionMove ? `Sijoitusmuutos: ${positionMove}` : null,
     standing     ? `Kisatilanne: pelaaja ${standing}` : null,
     ``,
-    `Muokkaa luonnosta Sakke-tyylisemmäksi puhekielellä. ` +
+    `Paranna luonnosta kevyesti puhekielellä. ` +
+    `Älä kirjoita viestiä uudelleen. ` +
+    `Tee vain pieniä muutoksia: lisää energiaa, tiivistä, tai lisää yksi hauska kommentti. ` +
+    `Jos sijoitusmuutos tai kisatilanne on annettu, lisää siihen lyhyt luonnollinen reaktio kommentin sisälle. ` +
+    `Jos teksti on jo hyvä, älä muuta sitä paljoa. ` +
     `Käytä VAIN pelaajan nimeä "${newPlayer.Name}" — älä keksi tai lisää muita nimiä. ` +
-    `Jos sijoitusmuutos on annettu, muodosta siitä luonnollinen lause kommentin sisälle — älä listaa sitä erikseen. ` +
-    `Reagoi myös kisatilanteeseen jos se on annettu. ` +
-    `Pidä kommentti lyhyenä (1–2 lausetta). Älä lisää lukuja tai sijoituksia. Tulosta vain valmis kommentti.`,
+    `Älä lisää lukuja tai sijoituksia. Tulosta vain valmis kommentti.`,
   ].filter(line => line !== null).join("\n");
 }
 
@@ -80,7 +82,7 @@ export async function generateLlmComment(change: Change, competitionName: string
         { role: "system", content: getSystemPrompt() },
         { role: "user",   content: context },
       ],
-      { temperature: 0.85, num_predict: 100 },
+      { temperature: 0.75, num_predict: 100 },
     );
 
     const firstName = change.newPlayer.Name.split(" ")[0].toLowerCase();
