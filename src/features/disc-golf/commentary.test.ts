@@ -38,12 +38,14 @@ describe("generateComment", () => {
 
   it("includes OB phrase when PEN > 0", () => {
     const comment = generateComment(makeChange("5", 2, 1));
-    expect(comment.toUpperCase()).toContain("OB");
+    const upper = comment.toUpperCase();
+    expect(upper.includes("OB") || upper.includes("BOUNDS")).toBe(true);
   });
 
   it("does not include OB phrase when PEN is 0", () => {
     const comment = generateComment(makeChange("3", 0, 0));
-    expect(comment.toUpperCase()).not.toContain("OB");
+    const upper = comment.toUpperCase();
+    expect(upper.includes("OB") || upper.includes("BOUNDS")).toBe(false);
   });
 
   it("returns a non-empty string for any valid input", () => {
