@@ -115,8 +115,8 @@ SankariTour toimii:
 
 - osakilpailu: 1
   nimi: Avajaiset
-  alku: 2026-05-29
-  loppu: 2026-05-31
+  alku: 2026-05-22
+  loppu: 2026-05-24
   rata: Härkälinna
 
 - osakilpailu: 2
