@@ -19,6 +19,7 @@ import { players } from "./bot/handlers/players";
 import { scores } from "./bot/handlers/scores";
 import { weather } from "./bot/handlers/weather";
 import { recipe } from "./bot/handlers/recipe";
+import { bagtag } from "./bot/handlers/bagtag";
 import { fun } from "./bot/handlers/fun"; // must be last — catches all message:text
 
 bot.use(competition);
@@ -26,6 +27,7 @@ bot.use(players);
 bot.use(scores);
 bot.use(weather);
 bot.use(recipe);
+bot.use(bagtag);
 bot.use(fun);
 
 // ── New chat handling ─────────────────────────────────────────────────────────

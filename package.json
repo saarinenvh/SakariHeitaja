@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/app.js",
   "scripts": {
-    "build": "tsc && cp -r src/bot/system-prompts dist/bot/system-prompts",
+    "build": "tsc && cp src/bot/system-prompts/*.md src/bot/system-prompts/*.json dist/bot/system-prompts/",
     "start": "node dist/app.js",
     "dev": "ts-node src/app.ts",
     "dev:local": "ENV_FILE=.env.dev ts-node src/app.ts",

@@ -10,10 +10,12 @@ export interface OllamaMessage {
 export interface OllamaOptions {
   temperature?: number;
   num_predict?: number;
+  num_gpu?: number;
+  num_ctx?: number;
 }
 
 const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-const model   = process.env.OLLAMA_MODEL   ?? "gemma3";
+const model   = process.env.OLLAMA_MODEL   ?? "llama3";
 
 export async function generate(messages: OllamaMessage[], options: OllamaOptions = {}): Promise<string> {
   const start = Date.now();
@@ -25,6 +27,8 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     options: {
       temperature: options.temperature ?? 0.8,
       num_predict: options.num_predict ?? 120,
+      num_ctx: options.num_ctx ?? 2048,
+      ...(options.num_gpu !== undefined && { num_gpu: options.num_gpu }),
     },
   };
 
@@ -46,12 +50,20 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
 
   if (!text) throw new Error("Ollama returned empty response");
 
+  // Strip Gemma chat template tokens and unsupported HTML artifacts
+  const stripped = text
+    .replace(/<start_of_turn>[\s\S]*/g, "")  // truncate if model echoes next turn
+    .replace(/<end_of_turn>[\s\S]*/g, "")    // truncate at end-of-turn token
+    .replace(/<\/start_of_turn>/g, "")        // remove closing variant
+    .replace(/<br\s*\/?>/gi, "\n")            // <br> → newline
+    .trim();
+
   // Strip wrapping quotes some models add around their output
   // Covers ASCII quotes and common Unicode curly/low quotes
-  const result = text
+  const result = (stripped || text)
     .replace(/^[\u0022\u0027\u201C\u201D\u201E\u2018\u2019]+/, "")
     .replace(/[\u0022\u0027\u201C\u201D\u2018\u2019]+$/, "")
-    .trim() || text;
+    .trim() || stripped || text;
 
   const ms = Date.now() - start;
   Logger.debug(`LLM response ← ${ms}ms "${result.slice(0, 80)}..."`);
@@ -62,4 +74,17 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
 export function loadPrompt(filename: string): string {
   const filePath = join(__dirname, "../../bot/system-prompts", filename);
   return readFileSync(filePath, "utf-8").trim();
+}
+
+export function loadContext(filenames: string[]): string {
+  return filenames
+    .map(filename => {
+      try {
+        return readFileSync(join(__dirname, "../../bot/system-prompts", filename), "utf-8").trim();
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n\n---\n\n");
 }

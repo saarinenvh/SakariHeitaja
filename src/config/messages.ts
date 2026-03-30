@@ -72,6 +72,10 @@ export const fun = {
   peleiFooter:      "Supereit heittoi kaikille!!",
 
   apua: `Meikää saa käskyttää seuraavin ja vain seuraavin komennoin!\n
+Bag Tag:
+/bagtag — näytä bag tag tilanne
+/bagtag set [nimi] [numero] — aseta tägi pelaajalle
+/bagtag remove [nimi] — poista pelaajan tägi\n
 Kilpailua seurailen seuraavasti:
 /follow [metrixId] - Alan seuraamaan kyseistä kisaa ja kommentoin kisan tapahtumia.
 /top5 - Kerron seurattavan kisan top-5 tilastot sarjoittain.

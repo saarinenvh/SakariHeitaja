@@ -12,6 +12,8 @@ export interface MetrixPlayerResult {
   Diff: number;
   OrderNumber: number;
   ClassName: string;
+  Group?: string;
+  DNF?: string | null;
   PlayerResults?: HoleEntry[];
 }
 

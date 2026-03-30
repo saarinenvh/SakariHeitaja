@@ -9,6 +9,8 @@ import * as scoreService from "./services/ScoreService";
 import { MetrixApiResponse, MetrixPlayerResult, TrackedPlayer, Change } from "../../types/metrix";
 import { competition as MSG } from "../../config/messages";
 import { HTML_NO_PREVIEW } from "../../config/bot";
+import { updateProfiles } from "./playerProfiles";
+import { computeAndApplySwaps, formatBagtagAnnouncement, getMissingTagPlayers } from "./bagtags";
 import Logger from "js-logger";
 
 const BASE_URL = "https://discgolfmetrix.com/api.php?content=result&id=";
@@ -23,6 +25,7 @@ export class Orchestrator {
 
   private playersAnnounced: boolean;
   private poller: Poller | null = null;
+  private commentaryQueue: Promise<void> = Promise.resolve();
 
   constructor(id: number, metrixId: string, chatId: number, playersAnnounced: boolean = false) {
     this.id = id;
@@ -47,10 +50,14 @@ export class Orchestrator {
     Logger.info(`Started following: ${this.snapshot.Competition.Name} (${this.metrixId})`);
 
     if (this.trackedPlayers.length === 0) {
-      Logger.info(`${this.metrixId}: no tracked players, stopping`);
-      await bot.api.sendMessage(this.chatId, MSG.followNoPlayers);
-      this.following = false;
-      return this;
+      if (this.playersAnnounced) {
+        Logger.info(`${this.metrixId}: no tracked players on restore, continuing to poll`);
+      } else {
+        Logger.info(`${this.metrixId}: no tracked players, stopping`);
+        await bot.api.sendMessage(this.chatId, MSG.followNoPlayers);
+        this.following = false;
+        return this;
+      }
     }
 
     await this._announceIfNeeded();
@@ -94,7 +101,11 @@ export class Orchestrator {
       const hadChanges = changes.length > 0;
 
       if (hadChanges) {
-        await this._sendCommentary(changes, freshSnapshot.Competition.Results);
+        const capturedChanges = changes;
+        const capturedResults = freshSnapshot.Competition.Results;
+        this.commentaryQueue = this.commentaryQueue
+          .then(() => this._sendCommentary(capturedChanges, capturedResults))
+          .catch(err => Logger.error(`${this.metrixId}: commentary queue error: ${err.message}`));
       } else {
         Logger.debug(`${this.snapshot.Competition.Name} ${this.metrixId}: no changes`);
       }
@@ -114,7 +125,7 @@ export class Orchestrator {
   }
 
   private async _sendCommentary(changes: Change[], freshResults: MetrixPlayerResult[]): Promise<void> {
-    const message = await formatCommentaryMessage(changes, this.metrixId, this.snapshot!.Competition.CourseName, freshResults);
+    const message = await formatCommentaryMessage(changes, this.metrixId, this.snapshot!.Competition.CourseName, freshResults, this.chatId);
     
     await bot.api.sendMessage(this.chatId, message, HTML_NO_PREVIEW);
 
@@ -139,6 +150,11 @@ export class Orchestrator {
       await scoreService.saveResults(this.trackedPlayers, this.chatId, course.id, this.id);
     }
 
+    updateProfiles(this.chatId, this.trackedPlayers, this.snapshot!.Competition.Results.length);
+
+    const bagtagResult = computeAndApplySwaps(this.chatId, this.trackedPlayers, this.snapshot!.Competition.Results);
+    await bot.api.sendMessage(this.chatId, formatBagtagAnnouncement(bagtagResult), HTML_NO_PREVIEW);
+
     this._sendTopList();
   }
 
@@ -162,14 +178,21 @@ export class Orchestrator {
     const course = `<a href="https://discgolfmetrix.com/${this.metrixId}">${truncateCourseName(this.snapshot!.Competition.CourseName)}</a>`;
     let message = `Peliareenana toimii ${course}\n\nJa tällä kertaa kisassa on mukana:\n`;
     for (const player of this.trackedPlayers) message += `${player.Name}\n`;
+
+    const missingTags = getMissingTagPlayers(this.chatId, this.trackedPlayers);
+    if (missingTags.length > 0) {
+      message += `\n🏷️ Ilman tägiä: ${missingTags.join(", ")}\nAseta: /bagtag set [nimi] [numero]`;
+    }
+
     await bot.api.sendMessage(this.chatId, message, HTML_NO_PREVIEW);
     this.playersAnnounced = true;
   }
 
   private _msUntilStart(date: string): number {
-    const now = new Date();
-    now.setHours(now.getHours() + 2);
-    const diff = new Date(date).getTime() - now.getTime();
+    // Metrix date strings have no timezone info — they are in local Finnish time.
+    // new Date() parses them as UTC, so we correct by the system's UTC offset.
+    const offsetMs = new Date().getTimezoneOffset() * 60 * 1000; // negative for UTC+3
+    const diff = new Date(date).getTime() + offsetMs - Date.now();
     return diff > 0 ? diff : 0;
   }
 }

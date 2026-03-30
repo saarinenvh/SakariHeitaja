@@ -34,7 +34,7 @@ const testCases = [
 ];
 
 async function main() {
-  const systemPrompt = loadPrompt("heckler.txt");
+  const systemPrompt = loadPrompt("heckler.md");
   console.log(`Model: ${process.env.OLLAMA_MODEL ?? "gemma3"}`);
   console.log(`URL:   ${process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434"}\n`);
 

@@ -39,7 +39,7 @@ const narratives = [
 
 type ScoreType = "ace" | "albatross" | "eagle" | "birdie" | "par" | "bogey" | "doubleBogey" | "worse";
 
-const scoreTexts: Record<Exclude<ScoreType, "worse">, string[]> = {
+export const scoreTexts: Record<Exclude<ScoreType, "worse">, string[]> = {
   ace:         ["ÄSSÄN!"],
   eagle:       ["eaglen?? SIIS EAGLEN! En usko", "KOTKAN", "EAGLEN"],
   albatross:   ["ALBATROSSIN?? Salee merkkausvirhe"],
@@ -49,7 +49,7 @@ const scoreTexts: Record<Exclude<ScoreType, "worse">, string[]> = {
   doubleBogey: ["ruman tuplabogin", "tsägällä tuplan", "kaks päälle", "DOUBLE BOGEYN"],
 };
 
-const startTexts = {
+export const startTexts = {
   good: [
     "MAHTAVA SUORITUS!", "USKOMATON TEKO!", "ENNENÄKEMÄTÖNTÄ TOIMINTAA!",
     "Wouuuuu, kyllä nyt kelpaa!", "Mahtavaa peliä, ei voi muuta sanoa.",
@@ -94,11 +94,13 @@ const startTexts = {
   ],
 };
 
-const verbs = [
+export const verbs = [
   "otti", "sai", "suoritti", "taisteli", "möyri", "heitti", "viskoi",
   "rämisteli", "scrambläsi", "liidätteli", "paiskasi", "nakkeli",
   "sinkosi", "nosti", "lapioi", "viimeisteli",
 ];
+
+export const descriptions = [" Iha siilon yli ja sit suoraan kuoppaan, perkele!", "Mörrin kautta järveen HAHAHAA", "WHAT THE FUCK RICHARD?????", "Varmasti vuoden kaunein draivi!", "Avas saatana taaksepäin xDDDD", "Bossiki kippas tohon vastaseen", "Keskellä lätäkköä, toivottavasti on sukelluskamat messissä", "Satavarma lost disci"]
 
 const obPhrases = [
   ", oli muuten myös <b>OBOBOB</b>",
@@ -115,7 +117,7 @@ function addPlusSign(score: number): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
-function getScoreType(holeResult: MetrixHoleResult): ScoreType {
+export function getScoreType(holeResult: MetrixHoleResult): ScoreType {
   const { Result, Diff } = holeResult;
   if (parseInt(Result) === 1) return "ace";
   if (Diff <= -3) return "albatross";
@@ -174,16 +176,18 @@ export function truncateCourseName(rawName: string): string {
   return name.length > 38 ? `${name.slice(0, 37)}...` : name;
 }
 
-export async function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string, results: MetrixPlayerResult[]): Promise<string> {
+export async function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string, results: MetrixPlayerResult[], chatId: number): Promise<string> {
   const commentFn = llmEnabled
-    ? (change: Change) => generateLlmComment(change, courseName, results)
+    ? (change: Change) => generateLlmComment(change, courseName, results, chatId)
     : (change: Change) => Promise.resolve(generateComment(change, results));
 
+  const comments = await Promise.all(changes.map(change => commentFn(change)));
+
   const byHole: Record<number, string[]> = {};
-  for (const change of changes) {
+  changes.forEach((change, i) => {
     if (!byHole[change.hole]) byHole[change.hole] = [];
-    byHole[change.hole].push(await commentFn(change));
-  }
+    byHole[change.hole].push(comments[i]);
+  });
 
   const courseLink = `<i><a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a></i>`;
 

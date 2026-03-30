@@ -4,6 +4,8 @@ import { searchGiphy } from "../../shared/giphy";
 import { sakariNames, randomQuote } from "../../config/phrases";
 import { fun as MSG } from "../../config/messages";
 import { heckle, llmHeckle, recordMessage } from "../llmHeckler";
+import { llmAnswer } from "../llmAsker";
+import { sendMorningGreeting } from "../../scheduler/morningGreeter";
 
 let games: Record<string, string> = {};
 let date = new Date().toLocaleDateString();
@@ -79,6 +81,10 @@ if (process.env.LLM_ENABLED === "true") {
     const reply = await llmHeckle(ctx.chat.id, trigger);
     await ctx.reply(reply);
   });
+
+  fun.command("aamuu", async ctx => {
+    await sendMorningGreeting(ctx.api, ctx.chat.id);
+  });
 }
 
 // Passive listener — must stay last in middleware registration.
@@ -93,7 +99,15 @@ fun.on("message:text", async ctx => {
   let said = false;
 
   if (sakariNames.find(name => text.toLowerCase().includes(name.toLowerCase()))) {
-    if (getRandom(2) === 1) {
+    const isQuestion = text.includes("?");
+    if (isQuestion && process.env.LLM_ENABLED === "true") {
+      const answer = await llmAnswer(text);
+      if (answer) {
+        await ctx.reply(answer);
+        said = true;
+      }
+    }
+    if (!said && getRandom(2) === 1) {
       await ctx.reply(await heckle(ctx.chat.id, text));
       said = true;
     }

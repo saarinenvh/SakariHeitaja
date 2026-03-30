@@ -16,7 +16,7 @@ export function recordMessage(chatId: number, text: string): void {
 let systemPrompt: string | null = null;
 
 function getSystemPrompt(): string {
-  if (!systemPrompt) systemPrompt = loadPrompt("heckler.txt");
+  if (!systemPrompt) systemPrompt = loadPrompt("heckler.md");
   return systemPrompt;
 }
 

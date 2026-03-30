@@ -1,31 +1,21 @@
 import { generate, loadPrompt } from "../../shared/llm/ollamaClient";
-import { generateComment, generateFlavor } from "./commentary";
+import { generateComment } from "./commentary";
+import { buildCommentaryBrief, buildPromptFromBrief } from "./commentaryBrief";
 import { Change, MetrixPlayerResult } from "../../types/metrix";
 import Logger from "js-logger";
 
 let systemPrompt: string | null = null;
 
 function getSystemPrompt(): string {
-  if (!systemPrompt) systemPrompt = loadPrompt("commentator.txt");
+  if (!systemPrompt) {
+    const base = loadPrompt("commentator.md");
+    systemPrompt = base;
+  }
   return systemPrompt;
 }
 
 function addPlusSign(score: number): string {
   return score > 0 ? `+${score}` : `${score}`;
-}
-
-
-function getStandingLabel(player: MetrixPlayerResult, results: MetrixPlayerResult[]): string | null {
-  const leader = results.find(r => r.OrderNumber === 1);
-  if (!leader) return null;
-  if (player.OrderNumber === 1) {
-    const tiedAtTop = results.filter(r => r.OrderNumber === 1).length > 1;
-    return tiedAtTop ? "tasatilanteessa johdossa muiden kanssa" : "johtaa kisaa";
-  }
-  const gap = player.Diff - leader.Diff;
-  if (gap === 0) return "tasatilanteessa johtajasta";
-  if (player.OrderNumber <= 3 && gap <= 2) return "aivan johtajan takana";
-  return null;
 }
 
 function ordinalTo(n: number): string {
@@ -37,53 +27,34 @@ function ordinalTo(n: number): string {
   return map[n] ?? `sijalle ${n}`;
 }
 
-function getPositionDeltaLabel(prev: number, next: number): string | null {
-  if (prev === next) return null;
-  const verb = prev > next ? "nousi" : "putosi";
-  return `${verb} ${ordinalTo(next)}`;
-}
-
-function buildContext(change: Change, competitionName: string, results: MetrixPlayerResult[]): string {
-  const { newPlayer, prevPlayer } = change;
-  const draft        = generateFlavor(change);
-  const standing     = getStandingLabel(newPlayer, results);
-  const positionMove = getPositionDeltaLabel(prevPlayer.OrderNumber, newPlayer.OrderNumber);
-
-  return [
-    `Kisa: ${competitionName}`,
-    `Pelaaja: ${newPlayer.Name}`,
-    ``,
-    `Luonnos kommentista:`,
-    `"${draft}"`,
-    ``,
-    positionMove ? `Sijoitusmuutos: ${positionMove}` : null,
-    standing     ? `Kisatilanne: pelaaja ${standing}` : null,
-    ``,
-    `Paranna luonnosta kevyesti puhekielellä. ` +
-    `Älä kirjoita viestiä uudelleen. ` +
-    `Tee vain pieniä muutoksia: lisää energiaa, tiivistä, tai lisää yksi hauska kommentti. ` +
-    `Jos sijoitusmuutos tai kisatilanne on annettu, lisää siihen lyhyt luonnollinen reaktio kommentin sisälle. ` +
-    `Jos teksti on jo hyvä, älä muuta sitä paljoa. ` +
-    `Käytä VAIN pelaajan nimeä "${newPlayer.Name}" — älä keksi tai lisää muita nimiä. ` +
-    `Älä lisää lukuja tai sijoituksia. Tulosta vain valmis kommentti.`,
-  ].filter(line => line !== null).join("\n");
-}
-
 function buildStructuredTail(change: Change): string {
-  const { newPlayer } = change;
-  return `tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ja sijalla <b>${newPlayer.OrderNumber}</b>`;
+  const { newPlayer, prevPlayer } = change;
+  const base = `Tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ja sijalla <b>${newPlayer.OrderNumber}</b>`;
+
+  if (newPlayer.OrderNumber !== prevPlayer.OrderNumber) {
+    const verb = prevPlayer.OrderNumber > newPlayer.OrderNumber ? "nousi" : "putosi";
+    return `${base} — ${verb} ${ordinalTo(newPlayer.OrderNumber)}`;
+  }
+  return base;
 }
 
-export async function generateLlmComment(change: Change, competitionName: string, results: MetrixPlayerResult[]): Promise<string> {
+export async function generateLlmComment(change: Change, _competitionName: string, results: MetrixPlayerResult[], chatId: number): Promise<string> {
   try {
-    const context = buildContext(change, competitionName, results);
-    const flavor = await generate(
+    const brief = buildCommentaryBrief(change, results, chatId);
+    const context = buildPromptFromBrief(brief);
+
+    const flavor = (await generate(
       [
         { role: "system", content: getSystemPrompt() },
         { role: "user",   content: context },
       ],
-      { temperature: 0.75, num_predict: 100 },
-    );
+      { temperature: 0.85, num_predict: 100, num_ctx: 4096 },
+    )).replace(/\n+/g, " ").trim();
+    const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3"];
+    if (PROMPT_LEAK_MARKERS.some(m => flavor.includes(m))) {
+      Logger.warn(`LLM commentary prompt leak detected, using fallback`);
+      return generateComment(change, results);
+    }
 
     const firstName = change.newPlayer.Name.split(" ")[0].toLowerCase();
     if (!flavor.toLowerCase().includes(firstName)) {
