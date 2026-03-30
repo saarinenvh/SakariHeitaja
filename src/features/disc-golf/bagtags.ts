@@ -3,7 +3,9 @@ import { join } from "path";
 import { MetrixPlayerResult, TrackedPlayer } from "../../types/metrix";
 import Logger from "js-logger";
 
-const BAGTAGS_PATH = join(__dirname, "../../bot/system-prompts/bagtags.json");
+const BAGTAGS_PATH = process.env.DATA_DIR
+  ? join(process.env.DATA_DIR, "bagtags.json")
+  : join(__dirname, "../../bot/system-prompts/bagtags.json");
 
 type BagtagStore = Record<string, Record<string, number>>; // chatId → name → tagNumber
 

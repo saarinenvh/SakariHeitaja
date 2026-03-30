@@ -11,25 +11,33 @@ Usage:
 """
 
 import json
-from pathlib import Path
+import warnings
+
 from datasets import Dataset
 from unsloth import FastLanguageModel
 from trl import SFTTrainer, SFTConfig
 
+warnings.filterwarnings("ignore", category=FutureWarning, module="bitsandbytes")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 BASE_MODEL    = "google/gemma-3-12b-it"
-LORA_RANK     = 16
+LORA_RANK     = 8
 LORA_ALPHA    = 16
 OUTPUT_DIR    = "./lora_sakke_gemma3_12b"
 DATA_FILE     = "./training_data.jsonl"
-MAX_SEQ_LEN   = 1024  # 512 was truncating examples (system prompt alone is ~500 tokens)
-EPOCHS        = 2     # more data warrants a second pass
+MAX_SEQ_LEN   = 512
+EPOCHS        = 1
 BATCH_SIZE    = 2
-GRAD_ACCUM    = 4     # effective batch 8 → more stable gradients
-LEARNING_RATE = 1e-5
+GRAD_ACCUM    = 2
+LEARNING_RATE = 5e-6
 
-SYSTEM_PROMPT = Path("../src/bot/system-prompts/commentator.md").read_text(encoding="utf-8").strip()
+SYSTEM_PROMPT = (
+    "Olet Sakke, fribaseuran maskotti ja amatööriselostaja.\n\n"
+    "Vastaat suomeksi puhekielellä. Tyyli on rento, sarkastinen ja piikikäs. "
+    "Kevyt kiroilu on sallittua. Vastaukset ovat yleensä 1–3 lausetta, "
+    "usein 2–3 jos tilanteessa on enemmän kommentoitavaa."
+)
 
 # ── Load model + LoRA via Unsloth ─────────────────────────────────────────────
 
@@ -91,7 +99,7 @@ trainer = SFTTrainer(
         max_length=MAX_SEQ_LEN,
         per_device_train_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRAD_ACCUM,
-        warmup_steps=10,
+        warmup_steps=25,
         num_train_epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         bf16=True,

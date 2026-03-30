@@ -8,5 +8,9 @@ services:
       - LLM_ENABLED=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=gemma3
+    volumes:
+      - /srv/sakke/data:/app/data
+    environment:
+      - DATA_DIR=/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"

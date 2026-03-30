@@ -3,7 +3,9 @@ import { join } from "path";
 import { TrackedPlayer } from "../../types/metrix";
 import Logger from "js-logger";
 
-const PROFILES_PATH = join(__dirname, "../../bot/system-prompts/player_profiles.json");
+const PROFILES_PATH = process.env.DATA_DIR
+  ? join(process.env.DATA_DIR, "player_profiles.json")
+  : join(__dirname, "../../bot/system-prompts/player_profiles.json");
 
 export interface PlayerProfile {
   nickname?: string;
