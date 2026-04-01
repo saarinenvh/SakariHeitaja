@@ -50,7 +50,7 @@ export async function generateLlmComment(change: Change, _competitionName: strin
       ],
       { temperature: 0.85, num_predict: 100, num_ctx: 4096 },
     )).replace(/\n+/g, " ").trim();
-    const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3"];
+    const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3", "Kirjoita vain"];
     if (PROMPT_LEAK_MARKERS.some(m => flavor.includes(m))) {
       Logger.warn(`LLM commentary prompt leak detected, using fallback`);
       return generateComment(change, results);

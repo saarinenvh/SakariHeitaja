@@ -1,5 +1,5 @@
 """
-LoRA fine-tuning for Gemma 3 4B using Unsloth (supports RTX 5080 / sm_120 / Blackwell via 2026.3.17+).
+LoRA fine-tuning for Llama-Poro-2-8B-Instruct using Unsloth.
 
 Hardware: RTX 5080 (16GB VRAM)
 Requires PyTorch nightly with CUDA 12.8:
@@ -21,13 +21,13 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="bitsandbytes")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-BASE_MODEL    = "google/gemma-3-12b-it"
+BASE_MODEL    = "LumiOpen/Llama-Poro-2-8B-Instruct"
 LORA_RANK     = 8
 LORA_ALPHA    = 16
-OUTPUT_DIR    = "./lora_sakke_gemma3_12b"
+OUTPUT_DIR    = "./lora_sakke_poro2_8b"
 DATA_FILE     = "./training_data.jsonl"
 MAX_SEQ_LEN   = 512
-EPOCHS        = 1
+EPOCHS        = 2
 BATCH_SIZE    = 2
 GRAD_ACCUM    = 2
 LEARNING_RATE = 5e-6
@@ -45,9 +45,8 @@ print("Loading model via Unsloth...")
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=BASE_MODEL,
     max_seq_length=MAX_SEQ_LEN,
-    dtype=None,         # auto-detect (bf16 on Ampere+)
-    load_in_4bit=True,  # 4-bit quantization to fit in 16GB
-    attn_implementation="eager",  # avoid flex_attention Triton OOM on Blackwell
+    dtype=None,
+    load_in_4bit=True,
 )
 
 model = FastLanguageModel.get_peft_model(
@@ -99,7 +98,7 @@ trainer = SFTTrainer(
         max_length=MAX_SEQ_LEN,
         per_device_train_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRAD_ACCUM,
-        warmup_steps=25,
+        warmup_steps=50,
         num_train_epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         bf16=True,
