@@ -9,9 +9,5 @@ export type CommentaryBrief = {
   competitionPhase: "early" | "mid" | "late";
   pressureMoment: boolean;
   styleMode: "safe" | "chaos";
-  reactionHints: string[];
-  scoreSlangHints: string[];
-  verbHints: string[];
-  descriptionHints: string[];
   playerProfile?: string;
 };

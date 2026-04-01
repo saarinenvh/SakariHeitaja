@@ -1,11 +1,7 @@
 import { Change, MetrixPlayerResult, HoleEntry } from "../../types/metrix";
 import { CommentaryBrief } from "../../types/commentary";
-import { getScoreType, scoreTexts, startTexts, verbs, descriptions } from "./commentary";
+import { getScoreType } from "./commentary";
 import { buildProfileSnippet } from "./playerProfiles";
-
-function sample<T>(arr: T[], n: number): T[] {
-  return [...arr].sort(() => Math.random() - 0.5).slice(0, n);
-}
 
 function getHoleScoreLabel(diff: number, result: string): string {
   if (parseInt(result) === 1) return "ässä (hole-in-one)";
@@ -81,14 +77,6 @@ export function buildCommentaryBrief(change: Change, results: MetrixPlayerResult
   const pressureMoment = competitionPhase === "late" && (newPlayer.OrderNumber <= 3 || prevPlayer.OrderNumber <= 3);
   const styleMode: "safe" | "chaos" = (pressureMoment || !!standingImpact) ? "safe" : "chaos";
 
-  const reactionPool = eventQuality === "good" ? startTexts.good
-    : eventQuality === "neutral" ? startTexts.neutral
-    : startTexts.bad;
-
-  const scoreSlangPool = type !== "worse"
-    ? scoreTexts[type]
-    : [`iso ylitys (+${holeResult.Diff})`];
-
   return {
     playerName: newPlayer.Name,
     holeNumber: hole + 1,
@@ -100,10 +88,6 @@ export function buildCommentaryBrief(change: Change, results: MetrixPlayerResult
     competitionPhase,
     pressureMoment,
     styleMode,
-    reactionHints:   sample(reactionPool, 2),
-    scoreSlangHints: sample(scoreSlangPool, 2),
-    verbHints:       sample(verbs, 2),
-    descriptionHints: sample(descriptions, 2),
     playerProfile: buildProfileSnippet(chatId, newPlayer.Name),
   };
 }
@@ -122,18 +106,6 @@ export function buildPromptFromBrief(brief: CommentaryBrief): string {
 
   if (brief.standingImpact) lines.push(`Kisatilanne: ${brief.standingImpact}`);
   if (brief.pressureMoment) lines.push("Vaihe: loppukiri, paine päällä");
-
-  lines.push("");
-  lines.push(`Reaktiovihjeitä (inspiraatioksi — älä kopioi suoraan, keksi oma): ${brief.reactionHints.join(", ")}`);
-  lines.push(`Tulosnimivaihtoehtoja (inspiraatioksi — älä kopioi suoraan): ${brief.scoreSlangHints.join(", ")}`);
-  lines.push(`Verbivaihtoehtoja (inspiraatioksi): ${brief.verbHints.join(", ")}`);
-
-  const needsThirdSentence = !!(brief.standingImpact || brief.pressureMoment);
-  lines.push("");
-  lines.push(needsThirdSentence
-    ? "Kirjoita 3 lausetta. Kolmas lause: lyhyt reaktio kisatilanteeseen."
-    : "Kirjoita 2 lausetta."
-  );
 
   return lines.join("\n");
 }
