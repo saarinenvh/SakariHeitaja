@@ -21,13 +21,13 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="bitsandbytes")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-BASE_MODEL    = "LumiOpen/Llama-Poro-2-8B-Instruct"
+BASE_MODEL    = "google/gemma-3-12b-it"
 LORA_RANK     = 8
 LORA_ALPHA    = 16
-OUTPUT_DIR    = "./lora_sakke_poro2_8b"
-DATA_FILE     = "./training_data.jsonl"
+OUTPUT_DIR    = "./lora_sakke_gemma3_clean200"
+DATA_FILE     = "./cleaned_data.jsonl"
 MAX_SEQ_LEN   = 512
-EPOCHS        = 2
+EPOCHS        = 3
 BATCH_SIZE    = 2
 GRAD_ACCUM    = 2
 LEARNING_RATE = 5e-6
@@ -47,6 +47,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     max_seq_length=MAX_SEQ_LEN,
     dtype=None,
     load_in_4bit=True,
+    attn_implementation="eager",  # avoid flex_attention Triton OOM on Blackwell
 )
 
 model = FastLanguageModel.get_peft_model(

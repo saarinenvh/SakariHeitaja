@@ -18,24 +18,28 @@ function addPlusSign(score: number): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
-function ordinalTo(n: number): string {
-  const map: Record<number, string> = {
-    1: "kärkeen", 2: "toiseksi", 3: "kolmanneksi", 4: "neljänneksi",
-    5: "viidenneksi", 6: "kuudenneksi", 7: "seitsemänneksi", 8: "kahdeksanneksi",
-    9: "yhdeksänneksi", 10: "kymmenenneksi",
-  };
-  return map[n] ?? `sijalle ${n}`;
+
+function holeScoreLabel(diff: number, result: string): string {
+  if (parseInt(result) === 1) return "ässä";
+  if (diff <= -3) return "albatrossi";
+  if (diff === -2) return "kotka";
+  if (diff === -1) return "birdie";
+  if (diff === 0)  return "par";
+  if (diff === 1)  return "bogi";
+  if (diff === 2)  return "tuplabogi";
+  return `+${diff}`;
 }
 
 function buildStructuredTail(change: Change): string {
-  const { newPlayer, prevPlayer } = change;
-  const base = `Tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ja sijalla <b>${newPlayer.OrderNumber}</b>`;
+  const { newPlayer, prevPlayer, holeResult } = change;
+  const score = holeScoreLabel(holeResult.Diff, holeResult.Result);
+  let meta = `${score} | ${newPlayer.Name} | ${addPlusSign(newPlayer.Diff)} | sija ${newPlayer.OrderNumber}`;
 
   if (newPlayer.OrderNumber !== prevPlayer.OrderNumber) {
-    const verb = prevPlayer.OrderNumber > newPlayer.OrderNumber ? "nousi" : "putosi";
-    return `${base} — ${verb} ${ordinalTo(newPlayer.OrderNumber)}`;
+    meta += newPlayer.OrderNumber < prevPlayer.OrderNumber ? " ↑" : " ↓";
   }
-  return base;
+
+  return `\n<blockquote>${meta}</blockquote>`;
 }
 
 export async function generateLlmComment(change: Change, _competitionName: string, results: MetrixPlayerResult[], chatId: number): Promise<string> {
@@ -53,12 +57,6 @@ export async function generateLlmComment(change: Change, _competitionName: strin
     const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3", "Kirjoita vain"];
     if (PROMPT_LEAK_MARKERS.some(m => flavor.includes(m))) {
       Logger.warn(`LLM commentary prompt leak detected, using fallback`);
-      return generateComment(change, results);
-    }
-
-    const firstName = change.newPlayer.Name.split(" ")[0].toLowerCase();
-    if (!flavor.toLowerCase().includes(firstName)) {
-      Logger.warn(`LLM commentary missing player name, using fallback`);
       return generateComment(change, results);
     }
 

@@ -160,10 +160,10 @@ export function generateComment(change: Change, results?: MetrixPlayerResult[]):
   const positionDelta = getPositionDeltaText(prevPlayer.OrderNumber, newPlayer.OrderNumber);
   const contextSuffix = results ? getCompetitionContextSuffix(newPlayer, results) : "";
 
+  const meta = `${newPlayer.Name} | ${scoreText} | ${addPlusSign(newPlayer.Diff)} | sija ${newPlayer.OrderNumber}`;
   return (
-    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${obPhrase}${positionDelta}, ` +
-    `tällä hetkellä tuloksessa <b>${addPlusSign(newPlayer.Diff)}</b> ` +
-    `ja sijalla <b>${newPlayer.OrderNumber}</b>${contextSuffix}`
+    `${startText} <b>${newPlayer.Name}</b> ${verb} ${scoreText}${obPhrase}${positionDelta}${contextSuffix}` +
+    `\n<blockquote>${meta}</blockquote>`
   );
 }
 
@@ -189,14 +189,12 @@ export async function formatCommentaryMessage(changes: Change[], metrixId: strin
     byHole[change.hole].push(comments[i]);
   });
 
-  const courseLink = `<i><a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a></i>`;
-
   let message = `${generateHeader()}\n`;
   for (const hole of Object.keys(byHole)) {
-    message += `\n*********** Väylä numero ${parseInt(hole) + 1} ***********\n`;
-    message += `${courseLink}\n\n`;
+    const holeHeader = `⛳ Väylä ${parseInt(hole) + 1} · <a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a>`;
+    message += `\n${holeHeader}\n\n`;
     for (const line of byHole[parseInt(hole)]) {
-      message += `${line} \n\n`;
+      message += `${line}\n\n`;
     }
   }
   return message;
