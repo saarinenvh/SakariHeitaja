@@ -178,10 +178,13 @@ export function truncateCourseName(rawName: string): string {
 
 export async function formatCommentaryMessage(changes: Change[], metrixId: string, courseName: string, results: MetrixPlayerResult[], chatId: number): Promise<string> {
   const commentFn = llmEnabled
-    ? (change: Change) => generateLlmComment(change, courseName, results, chatId)
+    ? (change: Change) => generateLlmComment(change, metrixId, results, chatId)
     : (change: Change) => Promise.resolve(generateComment(change, results));
 
-  const comments = await Promise.all(changes.map(change => commentFn(change)));
+  const comments: string[] = [];
+  for (const change of changes) {
+    comments.push(await commentFn(change));
+  }
 
   const byHole: Record<number, string[]> = {};
   changes.forEach((change, i) => {

@@ -10,6 +10,7 @@ import { MetrixApiResponse, MetrixPlayerResult, TrackedPlayer, Change } from "..
 import { competition as MSG } from "../../config/messages";
 import { HTML_NO_PREVIEW } from "../../config/bot";
 import { updateProfiles } from "./playerProfiles";
+import { startConversation, clearConversation } from "./llmCommentary";
 import { computeAndApplySwaps, formatBagtagAnnouncement, getMissingTagPlayers } from "./bagtags";
 import Logger from "js-logger";
 
@@ -66,6 +67,8 @@ export class Orchestrator {
     if (initialDelay > 0) {
       Logger.info(`${this.snapshot.Competition.Name} starts in ${Math.round(initialDelay / 60000)}min`);
     }
+
+    startConversation(this.metrixId);
 
     this.poller = new Poller(this.metrixId, BASE_URL);
     this.poller.on("data", (snapshot: MetrixApiResponse) => this._onPollResult(snapshot));
@@ -139,6 +142,7 @@ export class Orchestrator {
   private async _handleCompetitionEnd(): Promise<void> {
     this.following = false;
     this.poller!.stop();
+    clearConversation(this.metrixId);
 
     Logger.info(`Game ${this.snapshot!.Competition.Name}, ${this.metrixId} is finished`);
 
