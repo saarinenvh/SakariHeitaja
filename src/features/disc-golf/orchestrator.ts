@@ -118,7 +118,9 @@ export class Orchestrator {
       await this._refreshTrackedPlayers();
 
       if (hasCompetitionEnded(this.trackedPlayers)) {
-        await this._handleCompetitionEnd();
+        this.commentaryQueue = this.commentaryQueue
+          .then(() => this._handleCompetitionEnd())
+          .catch(err => Logger.error(`${this.metrixId}: end handler error: ${err.message}`));
       }
 
     } catch (err: any) {

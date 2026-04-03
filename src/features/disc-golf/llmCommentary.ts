@@ -28,11 +28,20 @@ export function clearConversation(metrixId: string): void {
   Logger.info(`LLM conversation cleared for competition ${metrixId}`);
 }
 
+// Keep only the last N message pairs to avoid growing beyond num_ctx
+const MAX_HISTORY_PAIRS = 10;
+
 function getHistory(metrixId: string): OllamaMessage[] {
   if (!conversations.has(metrixId)) {
     startConversation(metrixId);
   }
-  return conversations.get(metrixId)!;
+  const history = conversations.get(metrixId)!;
+  // Trim to last MAX_HISTORY_PAIRS user+assistant pairs
+  const maxMessages = MAX_HISTORY_PAIRS * 2;
+  if (history.length > maxMessages) {
+    history.splice(0, history.length - maxMessages);
+  }
+  return history;
 }
 
 function addPlusSign(score: number): string {
@@ -77,7 +86,7 @@ export async function generateLlmComment(change: Change, metrixId: string, resul
 
     const flavor = (await generate(
       messages,
-      { temperature: 0.85, num_predict: 100, num_ctx: 4096 },
+      { temperature: 0.85, num_predict: 100, num_ctx: 8192, repeat_penalty: 1.3 },
     )).replace(/\n+/g, " ").trim();
 
     const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3", "Kirjoita vain"];

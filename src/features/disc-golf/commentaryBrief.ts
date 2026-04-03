@@ -11,7 +11,7 @@ function getHoleScoreLabel(diff: number, result: string): string {
   if (diff === 0)  return "par";
   if (diff === 1)  return "bogi";
   if (diff === 2)  return "tuplabogi";
-  return `iso ylitys (+${diff})`;
+  return `${diff} yli parin (katastrofi)`;
 }
 
 function computeStandingImpact(
@@ -77,9 +77,12 @@ export function buildCommentaryBrief(change: Change, results: MetrixPlayerResult
   const pressureMoment = competitionPhase === "late" && (newPlayer.OrderNumber <= 3 || prevPlayer.OrderNumber <= 3);
   const styleMode: "safe" | "chaos" = (pressureMoment || !!standingImpact) ? "safe" : "chaos";
 
+  const totalHoles = newPlayer.PlayerResults?.length ?? 18;
+
   return {
     playerName: newPlayer.Name,
     holeNumber: hole + 1,
+    totalHoles,
     holeScoreLabel: getHoleScoreLabel(holeResult.Diff, holeResult.Result),
     eventQuality,
     ob: holeResult.PEN > 0,
@@ -93,18 +96,22 @@ export function buildCommentaryBrief(change: Change, results: MetrixPlayerResult
 }
 
 export function buildPromptFromBrief(brief: CommentaryBrief): string {
+  const holesLeft = brief.totalHoles - brief.holeNumber;
+
   const lines: string[] = [
     `Pelaaja: ${brief.playerName}`,
+    `Väylä: ${brief.holeNumber}/${brief.totalHoles} (väyliä jäljellä: ${holesLeft})`,
     `Tulos: ${brief.holeScoreLabel}${brief.ob ? " + OB" : ""}`,
     `Tapahtuma: ${brief.eventQuality}`,
   ];
 
   if (brief.playerProfile) lines.push(`Pelaajan taustatiedot: ${brief.playerProfile}`);
 
-  if (brief.positionChange === "moved_up")   lines.push("Sijoitusvaikutus: nousi sijoituksissa");
-  if (brief.positionChange === "moved_down") lines.push("Sijoitusvaikutus: putosi sijoituksissa");
-
-  if (brief.standingImpact) lines.push(`Kisatilanne: ${brief.standingImpact}`);
+  if (brief.holeNumber > 1) {
+    if (brief.positionChange === "moved_up")   lines.push("Sijoitusvaikutus: nousi sijoituksissa");
+    if (brief.positionChange === "moved_down") lines.push("Sijoitusvaikutus: putosi sijoituksissa");
+    if (brief.standingImpact) lines.push(`Kisatilanne: ${brief.standingImpact}`);
+  }
   if (brief.pressureMoment) lines.push("Vaihe: loppukiri, paine päällä");
 
   return lines.join("\n");

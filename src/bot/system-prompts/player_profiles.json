@@ -1,22 +1,22 @@
 {
   "-382458222": {
     "teppo": {
-      "recentForm": "steady",
-      "gamesPlayed": 1,
-      "avgPositionPct": 0.333,
-      "lastUpdated": "2026-03-30"
+      "recentForm": "cold",
+      "gamesPlayed": 2,
+      "avgPositionPct": 0.5,
+      "lastUpdated": "2026-04-03"
     },
     "Ville Saarinen": {
-      "recentForm": "steady",
-      "gamesPlayed": 1,
-      "avgPositionPct": 0.667,
-      "lastUpdated": "2026-03-30"
+      "recentForm": "hot",
+      "gamesPlayed": 2,
+      "avgPositionPct": 0.5,
+      "lastUpdated": "2026-04-03"
     },
     "tommi": {
       "recentForm": "steady",
-      "gamesPlayed": 1,
+      "gamesPlayed": 2,
       "avgPositionPct": 1,
-      "lastUpdated": "2026-03-30"
+      "lastUpdated": "2026-04-03"
     }
   }
 }

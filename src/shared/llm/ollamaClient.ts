@@ -12,6 +12,7 @@ export interface OllamaOptions {
   num_predict?: number;
   num_gpu?: number;
   num_ctx?: number;
+  repeat_penalty?: number;
 }
 
 const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
@@ -29,6 +30,7 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
       num_predict: options.num_predict ?? 120,
       num_ctx: options.num_ctx ?? 2048,
       ...(options.num_gpu !== undefined && { num_gpu: options.num_gpu }),
+      ...(options.repeat_penalty !== undefined && { repeat_penalty: options.repeat_penalty }),
     },
   };
 

@@ -1,6 +1,7 @@
 export type CommentaryBrief = {
   playerName: string;
   holeNumber: number;
+  totalHoles: number;
   holeScoreLabel: string;
   eventQuality: "good" | "neutral" | "bad";
   ob: boolean;

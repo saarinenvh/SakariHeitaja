@@ -194,8 +194,13 @@ export async function formatCommentaryMessage(changes: Change[], metrixId: strin
 
   let message = `${generateHeader()}\n`;
   for (const hole of Object.keys(byHole)) {
+    const holeChanges = changes.filter(c => c.hole === parseInt(hole));
+    const isStarframe = holeChanges.length > 1 && holeChanges.every(c => c.holeResult.Diff <= -1);
+
     const holeHeader = `⛳ Väylä ${parseInt(hole) + 1} · <a href="https://discgolfmetrix.com/${metrixId}">${truncateCourseName(courseName)}</a>`;
-    message += `\n${holeHeader}\n\n`;
+    message += `\n${holeHeader}\n`;
+    if (isStarframe) message += `⭐ STARFRAME ⭐\n`;
+    message += `\n`;
     for (const line of byHole[parseInt(hole)]) {
       message += `${line}\n\n`;
     }
