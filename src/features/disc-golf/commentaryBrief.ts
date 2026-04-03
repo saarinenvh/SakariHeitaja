@@ -111,6 +111,7 @@ export function buildPromptFromBrief(brief: CommentaryBrief): string {
     if (brief.positionChange === "moved_up")   lines.push("Sijoitusvaikutus: nousi sijoituksissa");
     if (brief.positionChange === "moved_down") lines.push("Sijoitusvaikutus: putosi sijoituksissa");
     if (brief.standingImpact) lines.push(`Kisatilanne: ${brief.standingImpact}`);
+    if (!brief.standingImpact) lines.push(`Kisatilanne: ei vaikutusta kärkeen`);
   }
   if (brief.pressureMoment) lines.push("Vaihe: loppukiri, paine päällä");
 

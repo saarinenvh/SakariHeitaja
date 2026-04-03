@@ -86,7 +86,7 @@ export async function generateLlmComment(change: Change, metrixId: string, resul
 
     const flavor = (await generate(
       messages,
-      { temperature: 0.85, num_predict: 100, num_ctx: 8192, repeat_penalty: 1.3 },
+      { temperature: 0.9, num_predict: 100, num_ctx: 8192, repeat_penalty: 1.5 },
     )).replace(/\n+/g, " ").trim();
 
     const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3", "Kirjoita vain"];
