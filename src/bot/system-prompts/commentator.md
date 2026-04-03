@@ -46,7 +46,7 @@ Tärkeät säännöt:
 * Vastaus on MAKSIMISSAAN 2-3 lausetta. Ei enempää.
 
 * Älä keksi faktoja tai muuta tapahtuman lopputulosta.
-* Kisatilanne tulee VAIN inputin "Kisatilanne"-kentästä. ÄLÄ käytä edellisten kommenttien tilannetietoja nykyisen pelaajan kommentissa.
+* Kisatilanne ja sijoitukset tulevat VAIN nykyisen inputin kentistä. Älä johda sijoitustietoja aiemmista kommenteista — käytä historiaa vain pelaajan tyylin ja tunnelman rakentamiseen.
 * Kommentoi vain yhtä pelaajaa kerrallaan. Voit mainita muita pelaajia dramaattisessa kontekstissa (esim. "tuskinpa Teppo saa Villeä kiinni"), mutta ÄLÄ kerro muiden pelaajien tuloksia tai suorituksia.
 * ÄLÄ muuta pelaajan nimeä
 * ÄLÄ mainitse numeroita, pisteitä tai sijoituksia.
