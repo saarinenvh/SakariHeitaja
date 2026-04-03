@@ -2,6 +2,7 @@ import { generate, loadPrompt, OllamaMessage } from "../../shared/llm/ollamaClie
 import { generateComment } from "./commentary";
 import { buildCommentaryBrief, buildPromptFromBrief } from "./commentaryBrief";
 import { Change, MetrixPlayerResult } from "../../types/metrix";
+import { initTracker, clearTracker, recordEvent, shouldResetConversation, buildSummary } from "./roundTracker";
 import Logger from "js-logger";
 
 let systemPrompt: string | null = null;
@@ -20,28 +21,29 @@ function getSystemPrompt(): string {
 
 export function startConversation(metrixId: string): void {
   conversations.set(metrixId, []);
+  initTracker(metrixId);
   Logger.info(`LLM conversation started for competition ${metrixId}`);
 }
 
 export function clearConversation(metrixId: string): void {
   conversations.delete(metrixId);
+  clearTracker(metrixId);
   Logger.info(`LLM conversation cleared for competition ${metrixId}`);
 }
 
-// Keep only the last N message pairs to avoid growing beyond num_ctx
-const MAX_HISTORY_PAIRS = 10;
+function resetWithSummary(metrixId: string, summary: string): void {
+  conversations.set(metrixId, [
+    { role: "user", content: summary },
+    { role: "assistant", content: "Selvä, jatkan kommentointia tästä." },
+  ]);
+  Logger.info(`LLM conversation reset with summary for ${metrixId}`);
+}
 
 function getHistory(metrixId: string): OllamaMessage[] {
   if (!conversations.has(metrixId)) {
     startConversation(metrixId);
   }
-  const history = conversations.get(metrixId)!;
-  // Trim to last MAX_HISTORY_PAIRS user+assistant pairs
-  const maxMessages = MAX_HISTORY_PAIRS * 2;
-  if (history.length > maxMessages) {
-    history.splice(0, history.length - maxMessages);
-  }
-  return history;
+  return conversations.get(metrixId)!;
 }
 
 function addPlusSign(score: number): string {
@@ -77,6 +79,15 @@ export async function generateLlmComment(change: Change, metrixId: string, resul
     const brief = buildCommentaryBrief(change, results, chatId);
     const context = buildPromptFromBrief(brief);
 
+    // Record event before potentially resetting
+    recordEvent(metrixId, change);
+
+    // Reset conversation with programmatic summary every SUMMARY_INTERVAL holes
+    if (shouldResetConversation(metrixId, brief.holeNumber)) {
+      const summary = buildSummary(metrixId, brief.holeNumber, brief.totalHoles, results);
+      resetWithSummary(metrixId, summary);
+    }
+
     const history = getHistory(metrixId);
     history.push({ role: "user", content: context });
 
@@ -93,11 +104,10 @@ export async function generateLlmComment(change: Change, metrixId: string, resul
     const PROMPT_LEAK_MARKERS = ["Pelaaja:", "Reaktiovihjeitä:", "Tulosnimivaihtoehtoja:", "Verbivaihtoehtoja:", "Kirjoita 2", "Kirjoita 3", "Kirjoita vain"];
     if (PROMPT_LEAK_MARKERS.some(m => flavor.includes(m))) {
       Logger.warn(`LLM commentary prompt leak detected, using fallback`);
-      history.pop(); // remove the user message we just added
+      history.pop();
       return generateComment(change, results);
     }
 
-    // Store assistant response in history so next call has full context
     history.push({ role: "assistant", content: flavor });
 
     return `${flavor} ${buildStructuredTail(change)}`;
