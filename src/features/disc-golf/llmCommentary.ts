@@ -62,7 +62,8 @@ function holeScoreLabel(diff: number, result: string): string {
 function buildStructuredTail(change: Change): string {
   const { newPlayer, prevPlayer, holeResult } = change;
   const score = holeScoreLabel(holeResult.Diff, holeResult.Result);
-  let meta = `${score} | ${newPlayer.Name} | ${addPlusSign(newPlayer.Diff)} | sija ${newPlayer.OrderNumber}`;
+  const ob = holeResult.PEN > 0 ? " (ob)" : "";
+  let meta = `${score}${ob} | ${newPlayer.Name} | ${addPlusSign(newPlayer.Diff)} | sija ${newPlayer.OrderNumber}`;
 
   if (newPlayer.OrderNumber !== prevPlayer.OrderNumber) {
     meta += newPlayer.OrderNumber < prevPlayer.OrderNumber ? " ↑" : " ↓";
