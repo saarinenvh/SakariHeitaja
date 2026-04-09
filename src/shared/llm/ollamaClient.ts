@@ -16,7 +16,7 @@ export interface OllamaOptions {
 }
 
 const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-const model   = process.env.OLLAMA_MODEL   ?? "llama3";
+const model   = process.env.BOT_OLLAMA_MODEL ?? process.env.OLLAMA_MODEL ?? "llama3";
 
 export async function generate(messages: OllamaMessage[], options: OllamaOptions = {}): Promise<string> {
   const start = Date.now();
