@@ -25,6 +25,7 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     model,
     messages,
     stream: false,
+    think: false,
     options: {
       temperature: options.temperature ?? 0.8,
       num_predict: options.num_predict ?? 120,
@@ -54,10 +55,11 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
 
   // Strip Gemma chat template tokens and unsupported HTML artifacts
   const stripped = text
-    .replace(/<start_of_turn>[\s\S]*/g, "")  // truncate if model echoes next turn
-    .replace(/<end_of_turn>[\s\S]*/g, "")    // truncate at end-of-turn token
-    .replace(/<\/start_of_turn>/g, "")        // remove closing variant
-    .replace(/<br\s*\/?>/gi, "\n")            // <br> → newline
+    .replace(/<think>[\s\S]*?<\/think>/gi, "") // strip reasoning blocks
+    .replace(/<start_of_turn>[\s\S]*/g, "")    // truncate if model echoes next turn
+    .replace(/<end_of_turn>[\s\S]*/g, "")      // truncate at end-of-turn token
+    .replace(/<\/start_of_turn>/g, "")          // remove closing variant
+    .replace(/<br\s*\/?>/gi, "\n")              // <br> → newline
     .trim();
 
   // Strip wrapping quotes some models add around their output
