@@ -59,6 +59,7 @@ async function init(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  Logger.info(`DB config: host=${process.env.DB_HOST} port=${process.env.DB_PORT} db=${process.env.DB_NAME} user=${process.env.DB_USERNAME}`);
   await dataSource.initialize();
   await init();
   bot.start();
