@@ -1,7 +1,4 @@
 import "reflect-metadata";
-import dotenv from "dotenv";
-import path from "path";
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 import { DataSource } from "typeorm";
 import { Player } from "./entities/Player";
 import { Chat } from "./entities/Chat";
