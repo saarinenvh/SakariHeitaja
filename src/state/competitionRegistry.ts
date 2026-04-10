@@ -13,16 +13,16 @@ export function getActive(chatId: number): Orchestrator[] {
   return active;
 }
 
-export function find(chatId: number, competitionId: string | number): Orchestrator | undefined {
-  return getActive(chatId).find(o => o.id === parseInt(String(competitionId)));
+export function find(chatId: number, metrixId: string): Orchestrator | undefined {
+  return getActive(chatId).find(o => o.metrixId === metrixId);
 }
 
-export function remove(chatId: number, competitionId: string | number): boolean {
+export function remove(chatId: number, metrixId: string): Orchestrator | undefined {
   const active = getActive(chatId);
-  const idx = active.findIndex(o => o.id === parseInt(String(competitionId)));
-  if (idx === -1) return false;
-  active[idx].stopFollowing();
-  active.splice(idx, 1);
+  const idx = active.findIndex(o => o.metrixId === metrixId);
+  if (idx === -1) return undefined;
+  const [orchestrator] = active.splice(idx, 1);
+  orchestrator.stopFollowing();
   registry.set(chatId, active);
-  return true;
+  return orchestrator;
 }

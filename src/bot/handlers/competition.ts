@@ -24,7 +24,7 @@ competition.command("follow", async ctx => {
 
   if (!orchestrator.following) {
     await ctx.reply(MSG.followInvalid);
-    await competitionService.remove(metrixId);
+    await competitionService.remove(String(result.insertId));
     return;
   }
 
@@ -42,7 +42,7 @@ competition.command("lopeta", async ctx => {
   const removed = registry.remove(chatId, ctx.match.trim());
 
   await ctx.reply(removed ? MSG.lopetaOk : MSG.lopetaNotFound);
-  if (removed) await competitionService.remove(ctx.match.trim());
+  if (removed) await competitionService.remove(String(removed.id));
 });
 
 // /pelit
@@ -54,7 +54,7 @@ competition.command("pelit", async ctx => {
 
   let message = active.length > 0 ? MSG.pelitHeader : MSG.pelitNone;
   for (const orchestrator of active) {
-    message += `${orchestrator.id}: ${orchestrator.snapshot!.Competition.Name}, ${orchestrator.trackedPlayers.length} sankari(a). https://discgolfmetrix.com/${orchestrator.metrixId}\n`;
+    message += `${orchestrator.metrixId}: ${orchestrator.snapshot!.Competition.Name}, ${orchestrator.trackedPlayers.length} sankari(a). https://discgolfmetrix.com/${orchestrator.metrixId}\n`;
   }
   await ctx.reply(message, HTML_NO_PREVIEW);
 });
