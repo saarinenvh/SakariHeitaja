@@ -27,6 +27,7 @@ export class Orchestrator {
   private playersAnnounced: boolean;
   private poller: Poller | null = null;
   private commentaryQueue: Promise<void> = Promise.resolve();
+  private endQueued: boolean = false;
 
   constructor(id: number, metrixId: string, chatId: number, playersAnnounced: boolean = false) {
     this.id = id;
@@ -117,7 +118,8 @@ export class Orchestrator {
       this.snapshot = freshSnapshot;
       await this._refreshTrackedPlayers();
 
-      if (hasCompetitionEnded(this.trackedPlayers)) {
+      if (hasCompetitionEnded(this.trackedPlayers) && !this.endQueued) {
+        this.endQueued = true;
         this.commentaryQueue = this.commentaryQueue
           .then(() => this._handleCompetitionEnd())
           .catch(err => Logger.error(`${this.metrixId}: end handler error: ${err.message}`));
