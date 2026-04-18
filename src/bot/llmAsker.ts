@@ -26,8 +26,8 @@ export async function llmAnswer(question: string, senderName?: string): Promise<
     if (isMatchPlayQuestion(question)) {
       try {
         const bracket = await fetchBracket();
+        Logger.info(`Bracket fetched (${bracket.length} chars): ${bracket.slice(0, 300)}`);
         userContent += `\n\n[Bracket data]\n${bracket}`;
-        Logger.debug(`Bracket data injected for match play question`);
       } catch (err: any) {
         Logger.warn(`Bracket fetch failed: ${err.message}`);
       }
