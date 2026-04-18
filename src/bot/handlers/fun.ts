@@ -99,8 +99,7 @@ fun.on("message:text", async ctx => {
   let said = false;
 
   if (sakariNames.find(name => text.toLowerCase().includes(name.toLowerCase()))) {
-    const isQuestion = text.includes("?");
-    if (isQuestion && process.env.LLM_ENABLED === "true") {
+    if (process.env.LLM_ENABLED === "true") {
       const senderName = ctx.from?.first_name ?? ctx.from?.username;
       const answer = await llmAnswer(text, senderName);
       if (answer) {
