@@ -1,4 +1,4 @@
-import { generate, loadPrompt, loadContext, OllamaTool } from "../shared/llm/ollamaClient";
+import { generate, loadPrompt, loadContext } from "../shared/llm/ollamaClient";
 import { fetchBracket } from "../shared/challonge";
 import Logger from "js-logger";
 
@@ -13,32 +13,25 @@ function getSystemPrompt(): string {
   return systemPrompt;
 }
 
-const BRACKET_TOOL: OllamaTool = {
-  type: "function",
-  function: {
-    name: "get_match_play_bracket",
-    description: "Fetches the current match play tournament bracket. Use this when asked about match play standings, who is playing who, next opponents, eliminated players, or bracket results.",
-    parameters: { type: "object", properties: {}, required: [] },
-  },
-};
+const MATCH_PLAY_KEYWORDS = ["reikäpeli", "match play", "matchplay", "bracket", "vastustaj", "eliminoi", "pudonneet", "pudonnut"];
 
-async function toolHandler(name: string): Promise<string> {
-  if (name === "get_match_play_bracket") {
-    try {
-      return await fetchBracket();
-    } catch (err: any) {
-      Logger.warn(`Bracket fetch failed: ${err.message}`);
-      return "Could not fetch the bracket at this time.";
-    }
-  }
-  return "Unknown tool.";
+function isMatchPlayQuestion(text: string): boolean {
+  return MATCH_PLAY_KEYWORDS.some(kw => text.toLowerCase().includes(kw));
 }
 
 export async function llmAnswer(question: string, senderName?: string): Promise<string | null> {
   try {
-    const userContent = senderName
-      ? `[Kysyjä: ${senderName}]\n${question}`
-      : question;
+    let userContent = senderName ? `[Kysyjä: ${senderName}]\n${question}` : question;
+
+    if (isMatchPlayQuestion(question)) {
+      try {
+        const bracket = await fetchBracket();
+        userContent += `\n\n[Bracket data]\n${bracket}`;
+        Logger.debug(`Bracket data injected for match play question`);
+      } catch (err: any) {
+        Logger.warn(`Bracket fetch failed: ${err.message}`);
+      }
+    }
 
     const answer = await generate(
       [
@@ -46,8 +39,6 @@ export async function llmAnswer(question: string, senderName?: string): Promise<
         { role: "user",   content: userContent },
       ],
       { temperature: 0.6, num_predict: 350, num_ctx: 4096 },
-      [BRACKET_TOOL],
-      toolHandler,
     );
     return answer;
   } catch (err: any) {
