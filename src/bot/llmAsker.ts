@@ -7,7 +7,7 @@ let systemPrompt: string | null = null;
 function getSystemPrompt(): string {
   if (!systemPrompt) {
     const base = loadPrompt("asker.md");
-    const context = loadContext(["seura_context.md", "sankaritour_context.md"]);
+    const context = loadContext(["seura_context.md", "sankaritour_context.md", "matchplay_context.md"]);
     systemPrompt = context ? `${base}\n\n---\n\n${context}` : base;
   }
   return systemPrompt;
