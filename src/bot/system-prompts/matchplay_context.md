@@ -4,6 +4,7 @@ Sankariheittäjillä on käynnissä kauden 2026 match play -turnaus.
 
 ## Turnauksen tiedot
 
+- Bracket-kaavio: https://challonge.com/fi/yvept9b5
 - 32 pelaajaa
 - Double elimination — pelaaja putoaa vasta kahden tappion jälkeen
 - Turnaus kestää koko kauden

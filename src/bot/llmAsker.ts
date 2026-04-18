@@ -13,7 +13,7 @@ function getSystemPrompt(): string {
   return systemPrompt;
 }
 
-const MATCH_PLAY_KEYWORDS = ["reikäpeli", "match play", "matchplay", "bracket", "vastustaj", "eliminoi", "pudonneet", "pudonnut"];
+const MATCH_PLAY_KEYWORDS = ["reikäpeli", "match play", "matchplay", "bracket", "vastustaj", "eliminoi", "pudonneet", "pudonnut", "kaavio", "turnauskaavio"];
 
 function isMatchPlayQuestion(text: string): boolean {
   return MATCH_PLAY_KEYWORDS.some(kw => text.toLowerCase().includes(kw));
