@@ -25,6 +25,7 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     model,
     messages,
     stream: false,
+    think: false,
     options: {
       temperature: options.temperature ?? 0.8,
       num_predict: options.num_predict ?? 120,
