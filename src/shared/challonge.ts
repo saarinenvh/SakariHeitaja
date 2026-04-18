@@ -1,6 +1,6 @@
 import Logger from "js-logger";
 
-const TOURNAMENT_URL = process.env.CHALLONGE_TOURNAMENT_URL ?? "https://challonge.com/yvept9b";
+const TOURNAMENT_URL = process.env.CHALLONGE_TOURNAMENT_URL ?? "https://challonge.com/yvept9b5";
 
 export async function fetchBracket(): Promise<string> {
   // Try JSON endpoint first
@@ -32,7 +32,45 @@ export async function fetchBracket(): Promise<string> {
 }
 
 function formatJsonBracket(data: any): string {
+  // Support both old Challonge API format and _initialStoreState['TournamentStore'] format
   const t = data?.tournament ?? data;
+  const tournamentName = t?.name ?? data?.tournament?.name ?? "Tournament";
+
+  const lines: string[] = [`=== Match Play Bracket: ${tournamentName} ===`, ""];
+
+  // New format: matches_by_round is an object keyed by round number string
+  // Each value is an array of match objects with player1/player2 as nested objects
+  if (data?.matches_by_round) {
+    const matchesByRound: Record<string, any[]> = data.matches_by_round;
+    const roundKeys = Object.keys(matchesByRound)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    for (const round of roundKeys) {
+      const label = round > 0 ? `Winners Round ${round}` : `Losers Round ${Math.abs(round)}`;
+      lines.push(`${label}:`);
+      for (const m of matchesByRound[String(round)]) {
+        const p1 = m.player1?.display_name ?? m.player1?.name ?? "TBD";
+        const p2 = m.player2?.display_name ?? m.player2?.name ?? "TBD";
+        if (m.state === "complete") {
+          const winnerId = m.winner_id;
+          const winner = (m.player1?.id === winnerId ? p1 : m.player2?.id === winnerId ? p2 : "?");
+          const scores = Array.isArray(m.scores) ? m.scores.map((s: any) => `${s.player1_score}-${s.player2_score}`).join(", ") : "";
+          lines.push(`  ${p1} vs ${p2} → Winner: ${winner}${scores ? ` (${scores})` : ""}`);
+        } else if (m.state === "open") {
+          lines.push(`  ${p1} vs ${p2} ← CURRENT MATCH`);
+        } else {
+          lines.push(`  ${p1} vs ${p2} (upcoming)`);
+        }
+      }
+      lines.push("");
+    }
+
+    Logger.debug(`Challonge _initialStoreState bracket parsed`);
+    return lines.join("\n");
+  }
+
+  // Old format: flat matches array with player1_id/player2_id
   const participants: any[] = t?.participants ?? [];
   const matches: any[] = t?.matches ?? [];
 
@@ -43,8 +81,6 @@ function formatJsonBracket(data: any): string {
   }
 
   const name = (id: number | null) => (id ? nameById.get(id) ?? "TBD" : "TBD");
-
-  const lines: string[] = [`=== Match Play Bracket: ${t?.name ?? "Tournament"} ===`, ""];
 
   const rounds = new Map<number, any[]>();
   for (const m of matches) {
@@ -77,6 +113,9 @@ function formatJsonBracket(data: any): string {
 function extractFromHtml(html: string): string {
   // Challonge embeds bracket data in script tags as JSON
   const patterns = [
+    // Current Challonge format (as of 2026): TournamentStore in _initialStoreState
+    /window\._initialStoreState\s*\[\s*['"]TournamentStore['"]\s*\]\s*=\s*(\{[\s\S]*?\});\s*\n/,
+    // Older formats
     /var\s+bracket_data\s*=\s*(\{[\s\S]*?\});/,
     /Challonge\.bracket\s*=\s*(\{[\s\S]*?\});/,
     /gon\.bracket\s*=\s*(\{[\s\S]*?\});/,
