@@ -3,7 +3,7 @@ import { join } from "path";
 import Logger from "js-logger";
 
 export interface OllamaMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
 }
 
@@ -15,13 +15,26 @@ export interface OllamaOptions {
   repeat_penalty?: number;
 }
 
+export interface OllamaTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export type ToolHandler = (name: string, args: Record<string, unknown>) => Promise<string>;
+
 const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
 const model   = process.env.BOT_OLLAMA_MODEL ?? process.env.OLLAMA_MODEL ?? "llama3";
 
-export async function generate(messages: OllamaMessage[], options: OllamaOptions = {}): Promise<string> {
-  const start = Date.now();
-
-  const body = {
+async function callOllama(
+  messages: OllamaMessage[],
+  options: OllamaOptions,
+  tools?: OllamaTool[],
+): Promise<{ content: string; toolCalls?: { function: { name: string; arguments: Record<string, unknown> } }[] }> {
+  const body: Record<string, unknown> = {
     model,
     messages,
     stream: false,
@@ -35,8 +48,7 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     },
   };
 
-  const truncated = messages.at(-1)?.content.slice(0, 80) ?? "";
-  Logger.debug(`LLM request → model=${model} url=${baseUrl} input="${truncated}..."`);
+  if (tools?.length) body.tools = tools;
 
   const res = await fetch(`${baseUrl}/api/chat`, {
     method:  "POST",
@@ -44,16 +56,16 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     body:    JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    throw new Error(`Ollama HTTP ${res.status}: ${res.statusText}`);
-  }
+  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}: ${res.statusText}`);
 
-  const json = await res.json() as { message?: { content?: string } };
-  const text = json?.message?.content?.trim() ?? "";
+  const json = await res.json() as { message?: { content?: string; tool_calls?: any[] } };
+  return {
+    content: json?.message?.content?.trim() ?? "",
+    toolCalls: json?.message?.tool_calls,
+  };
+}
 
-  if (!text) throw new Error("Ollama returned empty response");
-
-  // Strip Gemma chat template tokens and unsupported HTML artifacts
+function stripArtifacts(text: string): string {
   const stripped = text
     .replace(/<think>[\s\S]*?<\/think>/gi, "") // strip reasoning blocks
     .replace(/<start_of_turn>[\s\S]*/g, "")    // truncate if model echoes next turn
@@ -62,17 +74,49 @@ export async function generate(messages: OllamaMessage[], options: OllamaOptions
     .replace(/<br\s*\/?>/gi, "\n")              // <br> → newline
     .trim();
 
-  // Strip wrapping quotes some models add around their output
-  // Covers ASCII quotes and common Unicode curly/low quotes
-  const result = (stripped || text)
+  return (stripped || text)
     .replace(/^[\u0022\u0027\u201C\u201D\u201E\u2018\u2019]+/, "")
     .replace(/[\u0022\u0027\u201C\u201D\u2018\u2019]+$/, "")
     .trim() || stripped || text;
+}
 
-  const ms = Date.now() - start;
-  Logger.debug(`LLM response ← ${ms}ms "${result.slice(0, 80)}..."`);
+export async function generate(
+  messages: OllamaMessage[],
+  options: OllamaOptions = {},
+  tools?: OllamaTool[],
+  toolHandler?: ToolHandler,
+): Promise<string> {
+  const start = Date.now();
+  const history = [...messages];
 
-  return result;
+  const truncated = history.at(-1)?.content.slice(0, 80) ?? "";
+  Logger.debug(`LLM request → model=${model} url=${baseUrl} input="${truncated}..."`);
+
+  const MAX_TOOL_ROUNDS = 3;
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    const { content, toolCalls } = await callOllama(history, options, tools);
+
+    if (toolCalls?.length && toolHandler) {
+      Logger.debug(`LLM tool calls: ${toolCalls.map(tc => tc.function.name).join(", ")}`);
+      history.push({ role: "assistant", content: content ?? "" });
+
+      for (const tc of toolCalls) {
+        const result = await toolHandler(tc.function.name, tc.function.arguments ?? {});
+        history.push({ role: "tool", content: result });
+      }
+      continue;
+    }
+
+    if (!content) throw new Error("Ollama returned empty response");
+
+    const result = stripArtifacts(content);
+    const ms = Date.now() - start;
+    Logger.debug(`LLM response ← ${ms}ms "${result.slice(0, 80)}..."`);
+    return result;
+  }
+
+  throw new Error("Ollama tool call loop exceeded max rounds");
 }
 
 export function loadPrompt(filename: string): string {
